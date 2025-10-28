@@ -14,26 +14,31 @@ const path = require('path');
 
 // Enhanced CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://192.168.2.159:3000'],
+  origin: [
+    'http://localhost:3000',
+     'http://192.168.2.159:3000',
+     'https://frontend-roadshow.vercel.app'
+    ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization','X-Requested-With']
 }));
 
 app.use(bodyParser.json());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// // Handle preflight requests
-// app.options('*', cors());
+// ✅ Explicitly handle preflight requests
+app.options('*', cors());
+
 app.use("/images", express.static(path.join(__dirname, "../first-app/public/images")));
 app.use(express.static('public'));
 // mongoose.connect("mongodb://127.0.0.1:27017/AdinnRoadshow")
 mongoose.connect("mongodb+srv://roadshowAdinn:doAztsUGMfooi5PY@roadshowadinn.sephmyg.mongodb.net/?appName=RoadshowAdinn"
-    , {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}
+//     , {
+//     useNewUrlParser: true,
+//     useUnifiedTopology: true
+// }
 ).then(() => console.log('MongoDB connected successfully'))
     .catch(err => console.error('MongoDB connection error:', err));
 
