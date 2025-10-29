@@ -158,7 +158,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('./models/MainLoginSchema');
+const User = require('./Models/MainLoginSchema');
 
 const JWT_SECRET = 'admin@2025';
 const ADMIN_SECRET = 'ADMIN2025';
