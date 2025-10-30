@@ -14,20 +14,6 @@ const similarVehicleSchema = new mongoose.Schema({
 
 
 const vehicleSchema = new mongoose.Schema({
-
-    //     similarProducts: {
-    //         type: [{
-    //             Prodname: String,
-    //             ProdCode: String,
-    //             image: String,
-    //             ProdMountingCost:Number,
-    //             ProdPrintingCost:Number,
-    //             ProdPrice:Number
-    //         }],
-    //         required: [true, "Similar products array is required"]
-    //     },
-
-
     vehicleDetails: {
         vehicleID: String,
         name: String,
