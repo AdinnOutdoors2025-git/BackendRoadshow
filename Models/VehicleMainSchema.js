@@ -22,7 +22,7 @@ const vehicleSchema = new mongoose.Schema({
         audio: String,
         branding: String,
         power: String,
-        rating: Number,
+        rating: String,
         vehicleSize: {
             width: Number,
             height: Number,
