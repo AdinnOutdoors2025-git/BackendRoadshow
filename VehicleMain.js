@@ -48,8 +48,12 @@ app.use(express.static('public'));
 //     , {
 //     useNewUrlParser: true,
 //     useUnifiedTopology: true
-// }
- mongoose.connect("mongodb+srv://webdev_db_user:rJp012X4b29yFh0F@cluster0-dev.1utlbf7.mongodb.net/?appName=Cluster0-Dev"
+// } 
+
+//
+mongodb://localhost:27017
+//mongoose.connect("mongodb://127.0.0.1:27017/thendral"
+  mongoose.connect("mongodb+srv://webdev_db_user:rJp012X4b29yFh0F@cluster0-dev.1utlbf7.mongodb.net/?appName=Cluster0-Dev"
 ).then(() => console.log('MongoDB connected successfully'))
     .catch(err => console.error('MongoDB connection error:', err));
 
