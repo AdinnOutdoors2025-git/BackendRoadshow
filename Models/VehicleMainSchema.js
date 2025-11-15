@@ -18,9 +18,10 @@ const vehicleSchema = new mongoose.Schema({
         vehicleID: String,
         name: String,
         amount: Number,
-        deliveryDay: Number,
+        // deliveryDay: Number,
         audio: String,
-        branding: String,
+        screenresolution: String,
+        // branding: String,
         power: String,
         rating: String,
         vehicleSize: {
