@@ -26,13 +26,48 @@ const path = require('path');
 
 
 
-// Allow all origins for development
+
+
+
+// // Allow all origins for development
+// app.use(cors({
+//   origin: true,  // This allows any origin
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+// }));
+
+
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://192.168.2.159:3000',
+  'https://frontend-roadshow.vercel.app',
+  'https://frontend-roadshow-97ae.vercel.app',
+  'https://frontend-roadshow-*-your-username.vercel.app'
+];
+
 app.use(cors({
-  origin: true,  // This allows any origin
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Allow any vercel.app subdomain for preview deployments
+      if (origin.includes('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 
 app.use(bodyParser.json());
 app.use(express.json({ limit: '50mb' }));
