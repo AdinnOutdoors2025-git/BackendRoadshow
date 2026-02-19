@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const PORT = 3001;
 // VEHICLE UPLOAD SCHEMA 
 const vehicleData = require ('./Models/VehicleMainSchema');
+const Vehicle = require("./Models/entryVehicles");
+const VehiclesAvailability = require("./Models/vehiclesAvailability");
 
 //Image upload requirements 
 const multer = require('multer');
@@ -455,6 +457,192 @@ app.delete('/vehicles/:id', async (req, res) => {
         res.status(500).json({ message: err });
     }
 });
+
+app.post('/entryVehicles', async (req, res) => {
+     try {
+    const { vehicleNumber, model } = req.body;
+
+    if (!vehicleNumber || !model) {
+      return res.status(400).json({
+        status: "error",
+        message: "All fields are required"
+      });
+    }
+
+    // Optional Indian vehicle validation
+    const regex = /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/i;
+    if (!regex.test(vehicleNumber)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid vehicle number format"
+      });
+    }
+
+    const existingVehicle = await Vehicle.findOne({ vehicleNumber });
+
+    if (existingVehicle) {
+      return res.status(400).json({
+        status: "error",
+        message: "Vehicle already exists"
+      });
+    }
+
+    const newVehicle = new Vehicle({
+      vehicleNumber,
+      model
+    });
+
+    await newVehicle.save();
+
+    res.status(201).json({
+      status: "success",
+      message: "Vehicle created successfully",
+      data: newVehicle
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+
+})
+
+
+app.get("/getVehicles", async (req, res) => {
+  const vehicles = await Vehicle.find().sort({ createdAt: -1 });
+  res.json({"status": true, "data": vehicles});
+});
+
+app.put("/updateVehicle/:id", async (req, res) => {
+  try {
+    const updatedVehicle = await Vehicle.findByIdAndUpdate(
+      req.params.id,
+      {
+        vehicleNumber: req.body.vehicleNumber,
+        model: req.body.model,
+      },
+      { new: true }
+    );
+
+    res.json({ status: true, vehicle: updatedVehicle });
+  } catch (error) {
+    res.status(500).json({ status: false, message: error.message });
+  }
+});
+
+app.delete("/deleteVehicle/:id", async (req, res) => {
+  try {
+    await Vehicle.findByIdAndDelete(req.params.id);
+    res.json({ status: true, message: "Deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ status: false, message: error.message });
+  }
+});
+
+app.post("/saveVehiclesAvailability", async (req, res) => {
+  try {
+    const {
+      vehicleId,
+      vehicleNumber,
+      model,
+      location,
+      isAvailable,
+      statusReason,
+    } = req.body;
+
+    const updatedRecord = await VehiclesAvailability.findOneAndUpdate(
+      { vehicleId },
+      {
+        vehicleId,
+        vehicleNumber,
+        model,
+        location,
+        isAvailable,
+        statusReason: isAvailable ? "" : statusReason,
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+      }
+    );
+
+    res.json({ success: true, data: updatedRecord });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+app.get("/getVehiclesAvailability", async (req, res) => {
+  try {
+    const data = await VehiclesAvailability.find();
+     
+
+    const formatted = data.map((item) => ({
+      _id: item._id,
+       vehicleId: item.vehicleId,  // ✅ FIXED
+      vehicleNumber: item.vehicleNumber,
+      model: item.model,
+      location: item.location,
+      status: item.status,
+      isAvailable : item.isAvailable,
+      statusReason: item.statusReason,
+    }));
+
+    res.json({ success: true, data: formatted });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+app.put("/updateVehiclesAvailability/:id", async (req, res) => {
+  try {
+    const {
+      vehicleId,
+      vehicleNumber,
+      model,
+      location,
+      isAvailable,
+      statusReason,
+    } = req.body;
+
+    await VehiclesAvailability.findByIdAndUpdate(
+      req.params.id,
+      {
+        vehicleId,
+        vehicleNumber,
+        model,
+        location,
+        isAvailable,
+        statusReason: isAvailable ? "" : statusReason,
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.json({ success: true });
+
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+
+app.delete("/deleteVehiclesAvailability/:id", async (req, res) => {
+  try {
+    await VehiclesAvailability.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+
 
 
 
