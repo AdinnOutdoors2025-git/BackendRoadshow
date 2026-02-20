@@ -120,18 +120,20 @@ app.use(
 mongoose
   .connect(
     "mongodb+srv://roadshowAdinn:doAztsUGMfooi5PY@roadshowadinn.sephmyg.mongodb.net/?appName=RoadshowAdinn",
-    //     , {
-    //     useNewUrlParser: true,
-    //     useUnifiedTopology: true
-    // }
-
-    // mongodb://localhost:27017
-    //mongoose.connect("mongodb://127.0.0.1:27017/thendral"
-    //  mongoose.connect("mongodb+srv://webdev_db_user:rJp012X4b29yFh0F@cluster0-dev.1utlbf7.mongodb.net/?appName=Cluster0-Dev"
   )
-  .then(() => console.log("MongoDB connected successfully"))
-  .catch((err) => console.error("MongoDB connection error:", err));
 
+
+
+// mongoose.connect("mongodb://127.0.0.1:27017/Roadshow", {
+//   useNewUrlParser: true,
+//   useUnifiedTopology: true,
+// })
+.then(() => {
+  console.log("✅ Roadshow MongoDB Connected Successfully");
+})
+.catch((err) => {
+  console.error("❌ MongoDB Connection Error:", err);
+});
 app.use("/adminUserLogin", require("./UserAdminLogin"));
 app.use("/EmployeeLogin", require("./LoginMain"));
 
