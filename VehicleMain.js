@@ -8,6 +8,7 @@ const PORT = 3001;
 const vehicleData = require("./Models/VehicleMainSchema");
 const Vehicle = require("./Models/entryVehicles");
 const VehiclesAvailability = require("./Models/vehiclesAvailability");
+const VehicleModel = require("./Models/VehicleModel");
 
 //Image upload requirements
 const multer = require("multer");
@@ -44,7 +45,7 @@ const upload = multer({
   limits: { files: 4 },
 });
 
-
+app.use("/uploads", express.static("uploads"));
 
 // // Enhanced CORS configuration
 // app.use(cors({
@@ -101,39 +102,34 @@ app.use(bodyParser.json());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-
-
-
+app.use("/public", express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public")));
 // ✅ Explicitly handle preflight requests
 // app.options('*', cors());
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "public/uploads"))
-);
 
 app.use(
   "/images",
   express.static(path.join(__dirname, "../first-app/public/images")),
 );
+app.use(express.static("public"));
 
-// mongoose.connect("mongodb://127.0.0.1:27017/AdinnRoadshow")
 mongoose
   .connect(
     "mongodb+srv://roadshowAdinn:doAztsUGMfooi5PY@roadshowadinn.sephmyg.mongodb.net/?appName=RoadshowAdinn",
   )
 
+// mongoose
+//   .connect("mongodb://127.0.0.1:27017/Roadshow", {
+//     useNewUrlParser: true,
+//     useUnifiedTopology: true,
+//   })
+  .then(() => {
+    console.log("✅ Roadshow MongoDB Connected Successfully");
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err);
+  });
 
-
-// mongoose.connect("mongodb://127.0.0.1:27017/Roadshow", {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// })
-.then(() => {
-  console.log("✅ Roadshow MongoDB Connected Successfully");
-})
-.catch((err) => {
-  console.error("❌ MongoDB Connection Error:", err);
-});
 app.use("/adminUserLogin", require("./UserAdminLogin"));
 app.use("/EmployeeLogin", require("./LoginMain"));
 
@@ -502,7 +498,14 @@ app.delete("/vehicles/:id", async (req, res) => {
 
 app.post("/entryVehicles", upload.array("images", 4), async (req, res) => {
   try {
-    const { vehicleNumber, model } = req.body;
+    const {
+      vehicleNumber,
+      model,
+      speaker,
+      speakerNos,
+      generator,
+      generatorNos,
+    } = req.body;
 
     if (!vehicleNumber || !model) {
       return res.status(400).json({
@@ -519,60 +522,49 @@ app.post("/entryVehicles", upload.array("images", 4), async (req, res) => {
       });
     }
 
-    // 🔹 Normalize input model
-    const normalizedInputModel = model.trim().toUpperCase().replace(/\s+/g, " ");
+    // Check if model already exists
+    const existingModel = await Vehicle.findOne({ model });
 
-    // 🔹 Find an existing model (case-insensitive)
-    const existingModel = await Vehicle.findOne({
-      model: { $regex: new RegExp(`^${normalizedInputModel}$`, "i") },
-    });
+    let imagePaths = [];
 
     if (existingModel) {
-      // Use the existing images folder from the first record
-      const existingFolder = existingModel.images.length
-        ? path.dirname(existingModel.images[0])
-        : null;
+      // Model exists → use its images
+      imagePaths = existingModel.images || [];
 
-      // Delete newly uploaded files if any
+      // Delete newly uploaded files if any (because we skip new upload)
       if (req.files && req.files.length > 0) {
         req.files.forEach((file) => fs.unlinkSync(file.path));
       }
 
-      return res.status(200).json({
-        status: "success",
-        message: `Vehicle model "${existingModel.model}" already exists. Using existing images.`,
-        data: existingModel,
-        folderUsed: existingFolder, // just for debugging
-      });
+      console.log("Model exists, reusing existing images");
+    } else {
+      // Model does not exist → upload new images
+      imagePaths = req.files.map(
+        (file) =>
+          `public/uploads/${req.body.model.trim().replace(/\s+/g, "_")}/${file.filename}`,
+      );
     }
 
-    // Model does not exist → save new images
-    const folderName = normalizedInputModel.replace(/\s+/g, "_");
-    const uploadFolder = path.join("public", "uploads", folderName);
-
-    if (!fs.existsSync(uploadFolder)) {
-      fs.mkdirSync(uploadFolder, { recursive: true });
-    }
-
-    const imagePaths = req.files.map((file) => `${uploadFolder}/${file.filename}`);
-
-    // Save new vehicle
+    // Save new vehicle entry
     const newVehicle = new Vehicle({
       vehicleNumber,
-      model: normalizedInputModel,
+      model,
       images: imagePaths,
+      speaker,
+      speakerNos: speakerNos || null,
+      generator,
+      generatorNos: generatorNos || null,
     });
-
     await newVehicle.save();
 
     res.status(201).json({
       status: "success",
-      message: "Vehicle created successfully with images",
+      message: existingModel
+        ? "Vehicle added (images inherited from existing model)"
+        : "Vehicle created successfully with images",
       data: newVehicle,
     });
-
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       status: "error",
       message: error.message,
@@ -581,7 +573,14 @@ app.post("/entryVehicles", upload.array("images", 4), async (req, res) => {
 });
 app.put("/updateVehicle/:id", upload.array("images", 4), async (req, res) => {
   try {
-    const { vehicleNumber, model } = req.body;
+    const {
+      vehicleNumber,
+      model,
+      speaker,
+      speakerNos,
+      generator,
+      generatorNos,
+    } = req.body;
     const vehicleId = req.params.id;
 
     if (!vehicleNumber || !model) {
@@ -603,16 +602,13 @@ app.put("/updateVehicle/:id", upload.array("images", 4), async (req, res) => {
       // New images uploaded → save new paths
       imagePaths = req.files.map(
         (file) =>
-          `public/uploads/${model.trim().replace(/\s+/g, "_")}/${file.filename}`
+          `public/uploads/${model.trim().replace(/\s+/g, "_")}/${file.filename}`,
       );
 
       console.log("New images uploaded:", imagePaths);
 
       // Update **all vehicles with this model** to use the new images
-      await Vehicle.updateMany(
-        { model },
-        { $set: { images: imagePaths } }
-      );
+      await Vehicle.updateMany({ model }, { $set: { images: imagePaths } });
     } else if (existingModel) {
       // No new images uploaded → reuse existing model images
       imagePaths = existingModel.images || [];
@@ -625,17 +621,22 @@ app.put("/updateVehicle/:id", upload.array("images", 4), async (req, res) => {
         vehicleNumber,
         model,
         images: imagePaths,
+        speaker,
+        speakerNos: speakerNos || null,
+        generator,
+        generatorNos: generatorNos || null,
       },
-      { new: true }
+      { new: true },
     );
 
     res.json({
       status: true,
-      message: req.files && req.files.length > 0
-        ? "Vehicle and model images updated successfully"
-        : existingModel
-        ? "Vehicle updated (images inherited from existing model)"
-        : "Vehicle updated successfully",
+      message:
+        req.files && req.files.length > 0
+          ? "Vehicle and model images updated successfully"
+          : existingModel
+            ? "Vehicle updated (images inherited from existing model)"
+            : "Vehicle updated successfully",
       vehicle: updatedVehicle,
     });
   } catch (error) {
@@ -651,7 +652,6 @@ app.get("/getVehicles", async (req, res) => {
   const vehicles = await Vehicle.find().sort({ createdAt: -1 });
   res.json({ status: true, data: vehicles });
 });
-
 
 app.delete("/deleteVehicle/:id", async (req, res) => {
   try {
@@ -731,6 +731,7 @@ app.put("/updateVehiclesAvailability/:id", async (req, res) => {
       location,
       isAvailable,
       statusReason,
+      images, // 👈 get from request
     } = req.body;
 
     const cleanModel = model.trim();
@@ -762,11 +763,15 @@ app.put("/updateVehiclesAvailability/:id", async (req, res) => {
       statusReason: isAvailable ? "" : statusReason,
     };
 
-    // 🔥 Priority 1 → copy from model
-    if (existingModelVehicle && existingModelVehicle.images.length > 0) {
+    // ✅ CASE 1: User uploaded new images
+    if (images && images.length > 0) {
+      updateData.images = images;
+    }
+    // ✅ CASE 2: Copy from same model
+    else if (existingModelVehicle && existingModelVehicle.images.length > 0) {
       updateData.images = existingModelVehicle.images;
     }
-    // 🔥 Priority 2 → keep old availability images
+    // ✅ CASE 3: Keep old images (MOST IMPORTANT)
     else if (existingAvailability.images?.length > 0) {
       updateData.images = existingAvailability.images;
     }
@@ -787,37 +792,125 @@ app.put("/updateVehiclesAvailability/:id", async (req, res) => {
   }
 });
 
+// app.get("/getVehiclesAvailability", async (req, res) => {
+//   try {
+//     const data = await VehiclesAvailability.find().populate(
+//       "vehicleId",
+//       "images",
+//     );
+
+//     const formatted = data.map((item) => ({
+//       _id: item._id,
+//       vehicleNumber: item.vehicleId?.vehicleNumber,
+//       vehicleNumber: item.vehicleNumber,
+//       model: item.model,
+//       location: item.location,
+//       status: item.status,
+//       isAvailable: item.isAvailable,
+//       statusReason: item.statusReason,
+//       images: item.vehicleId?.images || [],
+//     }));
+
+//     res.json({ success: true, data: formatted });
+//   } catch (error) {
+//     res.status(500).json({ success: false });
+//   }
+// });
+
 app.get("/getVehiclesAvailability", async (req, res) => {
   try {
     const data = await VehiclesAvailability.find().populate(
       "vehicleId",
-      "images",
+      "vehicleNumber model images speaker speakerNos generator generatorNos"
     );
 
     const formatted = data.map((item) => ({
       _id: item._id,
-      vehicleId: item.vehicleId, // ✅ FIXED
-      vehicleNumber: item.vehicleNumber,
-      model: item.model,
+      vehicleNumber: item.vehicleId?.vehicleNumber,
+      model: item.vehicleId?.model,
       location: item.location,
-      status: item.status,
       isAvailable: item.isAvailable,
       statusReason: item.statusReason,
       images: item.vehicleId?.images || [],
+
+      // ✅ ADD THESE
+      speaker: item.vehicleId?.speaker || "",
+      speakerNos: item.vehicleId?.speakerNos ?? null,
+      generator: item.vehicleId?.generator || "",
+      generatorNos: item.vehicleId?.generatorNos ?? null,
     }));
 
     res.json({ success: true, data: formatted });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false });
   }
 });
-
 app.delete("/deleteVehiclesAvailability/:id", async (req, res) => {
   try {
     await VehiclesAvailability.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false });
+  }
+});
+
+app.post("/saveVehicleModel", async (req, res) => {
+  try {
+    const { modelName } = req.body;
+
+    if (!modelName || modelName.trim() === "") {
+      return res.status(400).json({
+        status: false,
+        message: "Model name is required",
+      });
+    }
+
+    // Check duplicate
+    const existing = await VehicleModel.findOne({
+      modelName: modelName.toUpperCase(),
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        status: false,
+        message: "Model already exists",
+      });
+    }
+
+    const newModel = new VehicleModel({
+      modelName: modelName.toUpperCase(),
+    });
+
+    await newModel.save();
+
+    res.status(201).json({
+      status: true,
+      message: "Model saved successfully",
+      data: newModel,
+    });
+  } catch (error) {
+    console.log("model not saved", error);
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+});
+
+app.get("/getVehicleModels", async (req, res) => {
+  try {
+    const models = await VehicleModel.find().sort({ createdAt: -1 });
+
+    res.json({
+      status: true,
+      data: models,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
   }
 });
 

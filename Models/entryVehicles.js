@@ -18,6 +18,25 @@ const vehicleSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // ✅ NEW OPTIONAL FIELDS
+    speaker: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    speakerNos: {
+      type: Number,
+      default: null,
+    },
+    generator: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    generatorNos: {
+      type: Number,
+      default: null,
+    },
   },
   {
     timestamps: true,
