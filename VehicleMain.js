@@ -10,6 +10,8 @@ const Vehicle = require("./Models/entryVehicles");
 const VehiclesAvailability = require("./Models/vehiclesAvailability");
 const VehicleModel = require("./Models/VehicleModel");
 const vehicleDetails = require("./Models/vehicleDetails");
+const Cart = require("./Models/cartModel");
+const Order = require("./Models/orderModel");
 
 //Image upload requirements
 const multer = require("multer");
@@ -987,6 +989,162 @@ app.get("/getNewVehicles", async (req, res) => {
     });
   }
 });
+
+/* ================Order creation =================== */
+// ================= ADD TO CART =================
+app.post("/addToCart", async (req, res) => {
+  try {
+    const {
+       userId,
+      vehicleModel,
+      city,
+      quantity,
+      fromDate,
+      toDate,
+    } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+    // Basic validation
+    if (!vehicleModel || !city || !quantity || !fromDate || !toDate) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    // 🔥 Check available vehicles
+    // const availableCount = await vehicleDetails.countDocuments({
+    //   model: vehicleModel,
+    //   city: city,
+    //   availability: "Available",
+    // });
+
+    // if (quantity > availableCount) {
+    //   return res.status(400).json({
+    //     message: `Only ${availableCount} vehicles available`,
+    //   });
+    // }
+
+    // Get price from one vehicle (dummy price logic)
+    const vehicleData = await vehicleDetails.findOne({
+      model: vehicleModel,
+      city: city,
+    });
+
+    if (!vehicleData) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    const pricePerDay = vehicleData.basePrice;
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+
+    const totalDays =
+      Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    const totalAmount = totalDays * quantity * pricePerDay;
+
+    // Create cart if not exists
+    let cart = await Cart.findOne();
+
+    if (!cart) {
+      cart = new Cart({ userId, items: [], grandTotal: 0 });
+    }
+
+    cart.items.push({
+      vehicleModel,
+      city,
+      quantity,
+      fromDate,
+      toDate,
+      totalDays,
+      pricePerDay,
+      totalAmount,
+    });
+
+    cart.grandTotal += totalAmount;
+
+    await cart.save();
+
+    res.status(200).json({
+      message: "Added to cart successfully",
+      cart,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// ================= CREATE ORDER =================
+app.post("/orderCreation", async (req, res) => {
+  try {
+    const {
+      userId,
+      name,
+      phone,
+      email,
+      companyName,
+      designation,
+    } = req.body;
+
+    // ✅ Validate user
+    if (!userId) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+
+    if (!name || !phone) {
+      return res.status(400).json({ message: "Name and Phone required" });
+    }
+
+    // ✅ Fetch ONLY this user's cart
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: "Cart is empty for this user" });
+    }
+
+    // ✅ Create Order
+    const order = new Order({
+      userId,
+      name,
+      phone,
+      email,
+      companyName,
+      designation,
+      bookingItems: cart.items,
+      grandTotal: cart.grandTotal,
+      orderStatus: "Pending",
+    });
+
+    await order.save();
+
+    // ✅ Optional: Mark vehicles unavailable properly
+    for (const item of cart.items) {
+      await vehicleDetails.updateMany(
+        {
+          modelType: item.vehicleModel,   // ⚠️ use modelType not model
+          city: item.city,
+          availability: "Available",
+        },
+        {
+          $set: { availability: "Booked" },
+        }
+      );
+    }
+
+    // ✅ Delete ONLY this user's cart
+    await Cart.deleteOne({ userId });
+
+    res.status(200).json({
+      message: "Order created successfully",
+      order,
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+/* ================Order creation =================== */
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
