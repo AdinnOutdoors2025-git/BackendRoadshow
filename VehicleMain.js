@@ -9,6 +9,7 @@ const vehicleData = require("./Models/VehicleMainSchema");
 const Vehicle = require("./Models/entryVehicles");
 const VehiclesAvailability = require("./Models/vehiclesAvailability");
 const VehicleModel = require("./Models/VehicleModel");
+const vehicleDetails = require("./Models/vehicleDetails");
 
 //Image upload requirements
 const multer = require("multer");
@@ -42,10 +43,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { files: 4 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per file
 });
-
-app.use("/uploads", express.static("uploads"));
+// app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // // Enhanced CORS configuration
 // app.use(cors({
@@ -113,16 +114,16 @@ app.use(
 );
 app.use(express.static("public"));
 
-mongoose
-  .connect(
-    "mongodb+srv://roadshowAdinn:doAztsUGMfooi5PY@roadshowadinn.sephmyg.mongodb.net/?appName=RoadshowAdinn",
-  )
-
 // mongoose
-//   .connect("mongodb://127.0.0.1:27017/Roadshow", {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true,
-//   })
+//   .connect(
+//     "mongodb+srv://roadshowAdinn:doAztsUGMfooi5PY@roadshowadinn.sephmyg.mongodb.net/?appName=RoadshowAdinn",
+//   )
+
+mongoose
+  .connect("mongodb://127.0.0.1:27017/Roadshow", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("✅ Roadshow MongoDB Connected Successfully");
   })
@@ -143,6 +144,18 @@ cloudinary.config({
   api_secret: "i4fzWaXH_32kQYkwWb3U-pLxKd4",
   secure: true, // Add this for HTTPS
 });
+
+const vehicleUpload = multer({
+  storage: storage, // reuse existing storage
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}).fields([
+  { name: "mainImage", maxCount: 4 },
+  { name: "sideImages", maxCount: 4 },
+  { name: "interiorImages", maxCount: 4 },
+  { name: "ledDisplayImage", maxCount: 4 },
+  { name: "brandingSample", maxCount: 4 },
+  { name: "vehicleVideo", maxCount: 4 },
+]);
 
 // Configure storage for main image upload
 const imageStorage = new CloudinaryStorage({
@@ -821,7 +834,7 @@ app.get("/getVehiclesAvailability", async (req, res) => {
   try {
     const data = await VehiclesAvailability.find().populate(
       "vehicleId",
-      "vehicleNumber model images speaker speakerNos generator generatorNos"
+      "vehicleNumber model images speaker speakerNos generator generatorNos",
     );
 
     const formatted = data.map((item) => ({
@@ -910,6 +923,67 @@ app.get("/getVehicleModels", async (req, res) => {
     res.status(500).json({
       status: false,
       message: "Server error",
+    });
+  }
+});
+
+app.post("/createVehicle", vehicleUpload, async (req, res) => {
+  try {
+    const bodyData = req.body;
+    const files = req.files || {};
+
+    const vehicleData = {
+      ...req.body,
+
+      mainImage: files.mainImage?.map((file) => file.filename) || [],
+
+      sideImages: files.sideImages?.map((file) => file.filename) || [],
+
+      interiorImages: files.interiorImages?.map((file) => file.filename) || [],
+
+      ledDisplayImage:
+        files.ledDisplayImage?.map((file) => file.filename) || [],
+
+      brandingSample: files.brandingSample?.map((file) => file.filename) || [],
+
+      vehicleVideo: files.vehicleVideo?.map((file) => file.filename) || [],
+    };
+
+    const newVehicle = new vehicleDetails(vehicleData);
+    const savedVehicle = await newVehicle.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Vehicle Created Successfully",
+      data: savedVehicle,
+    });
+  } catch (error) {
+    console.error("Create Vehicle Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error Creating Vehicle",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/getNewVehicles", async (req, res) => {
+  try {
+    const vehicles = await vehicleDetails.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: vehicles.length,
+      data: vehicles,
+    });
+  } catch (error) {
+    console.error("Get Vehicles Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error Fetching Vehicles",
+      error: error.message,
     });
   }
 });
