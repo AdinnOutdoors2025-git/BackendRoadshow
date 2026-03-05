@@ -931,11 +931,14 @@ app.get("/getVehicleModels", async (req, res) => {
 
 app.post("/createVehicle", vehicleUpload, async (req, res) => {
   try {
-    const bodyData = req.body;
+    
     const files = req.files || {};
 
     const vehicleData = {
       ...req.body,
+
+       model: req.body.model,
+      city: req.body.city,
 
       mainImage: files.mainImage?.map((file) => file.filename) || [],
 
@@ -995,37 +998,37 @@ app.get("/getNewVehicles", async (req, res) => {
 app.post("/addToCart", async (req, res) => {
   try {
     const {
-       userId,
+      userId,
       vehicleModel,
       city,
       quantity,
       fromDate,
       toDate,
     } = req.body;
+
+    // ================= VALIDATION =================
     if (!userId) {
       return res.status(400).json({ message: "User ID required" });
     }
-    // Basic validation
+
     if (!vehicleModel || !city || !quantity || !fromDate || !toDate) {
       return res.status(400).json({ message: "All fields required" });
     }
 
-    // 🔥 Check available vehicles
-    // const availableCount = await vehicleDetails.countDocuments({
-    //   model: vehicleModel,
-    //   city: city,
-    //   availability: "Available",
-    // });
+    if (quantity <= 0) {
+      return res.status(400).json({ message: "Quantity must be greater than 0" });
+    }
 
-    // if (quantity > availableCount) {
-    //   return res.status(400).json({
-    //     message: `Only ${availableCount} vehicles available`,
-    //   });
-    // }
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
 
-    // Get price from one vehicle (dummy price logic)
+    if (end < start) {
+      return res.status(400).json({ message: "Invalid date range" });
+    }
+
+    // ================= VEHICLE CHECK =================
     const vehicleData = await vehicleDetails.findOne({
-      model: vehicleModel,
+      model: vehicleModel,   // FIXED (you changed schema)
       city: city,
     });
 
@@ -1033,35 +1036,46 @@ app.post("/addToCart", async (req, res) => {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
-    const pricePerDay = vehicleData.basePrice;
+    const pricePerDay = Number(vehicleData.basePrice);
 
-    const start = new Date(fromDate);
-    const end = new Date(toDate);
+    if (!pricePerDay || pricePerDay <= 0) {
+      return res.status(400).json({ message: "Invalid vehicle price" });
+    }
 
+    // ================= CALCULATION =================
     const totalDays =
       Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
     const totalAmount = totalDays * quantity * pricePerDay;
 
-    // Create cart if not exists
-    let cart = await Cart.findOne();
+    // ================= GET USER CART =================
+    let cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      cart = new Cart({ userId, items: [], grandTotal: 0 });
+      cart = new Cart({
+        userId,
+        items: [],
+        grandTotal: 0,
+      });
     }
 
+    // ================= PUSH ITEM =================
     cart.items.push({
       vehicleModel,
       city,
       quantity,
-      fromDate,
-      toDate,
+      fromDate: start,
+      toDate: end,
       totalDays,
       pricePerDay,
       totalAmount,
     });
 
-    cart.grandTotal += totalAmount;
+    // ================= RECALCULATE GRAND TOTAL =================
+    cart.grandTotal = cart.items.reduce(
+      (sum, item) => sum + item.totalAmount,
+      0
+    );
 
     await cart.save();
 
@@ -1069,11 +1083,11 @@ app.post("/addToCart", async (req, res) => {
       message: "Added to cart successfully",
       cart,
     });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 // ================= CREATE ORDER =================
 app.post("/orderCreation", async (req, res) => {
@@ -1087,23 +1101,30 @@ app.post("/orderCreation", async (req, res) => {
       designation,
     } = req.body;
 
-    // ✅ Validate user
-    if (!userId) {
-      return res.status(400).json({ message: "User ID required" });
-    }
+    if (!userId) throw new Error("User ID required");
+    if (!name || !phone) throw new Error("Name and Phone required");
 
-    if (!name || !phone) {
-      return res.status(400).json({ message: "Name and Phone required" });
-    }
-
-    // ✅ Fetch ONLY this user's cart
     const cart = await Cart.findOne({ userId });
 
     if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ message: "Cart is empty for this user" });
+      throw new Error("Cart is empty for this user");
     }
 
-    // ✅ Create Order
+    // CHECK AVAILABILITY
+    // for (const item of cart.items) {
+    //   const availableCount = await vehicleDetails.countDocuments({
+    //     modelType: item.vehicleModel,  // 🔥 FIXED
+    //     city: item.city,
+    //     availability: "Available",
+    //   });
+
+    //   if (availableCount < item.quantity) {
+    //     throw new Error(
+    //       `Only ${availableCount} vehicles available for ${item.vehicleModel} in ${item.city}`
+    //     );
+    //   }
+    // }
+
     const order = new Order({
       userId,
       name,
@@ -1113,26 +1134,24 @@ app.post("/orderCreation", async (req, res) => {
       designation,
       bookingItems: cart.items,
       grandTotal: cart.grandTotal,
-      orderStatus: "Pending",
     });
 
     await order.save();
 
-    // ✅ Optional: Mark vehicles unavailable properly
+    // UPDATE VEHICLES
     for (const item of cart.items) {
-      await vehicleDetails.updateMany(
-        {
-          modelType: item.vehicleModel,   // ⚠️ use modelType not model
-          city: item.city,
-          availability: "Available",
-        },
-        {
-          $set: { availability: "Booked" },
-        }
-      );
+      const vehiclesToBook = await vehicleDetails.find({
+        modelType: item.vehicleModel,  // 🔥 FIXED
+        city: item.city,
+        availability: "Available",
+      }).limit(item.quantity);
+
+      for (const vehicle of vehiclesToBook) {
+        vehicle.availability = "Booked";
+        await vehicle.save();
+      }
     }
 
-    // ✅ Delete ONLY this user's cart
     await Cart.deleteOne({ userId });
 
     res.status(200).json({
@@ -1141,7 +1160,9 @@ app.post("/orderCreation", async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({
+      message: error.message,
+    });
   }
 });
 /* ================Order creation =================== */

@@ -5,7 +5,11 @@ const vehicleSchema = new mongoose.Schema(
     // ================= BASIC INFO =================
     vehicleName: { type: String, required: true },
     vehicleType: { type: String, required: true },
-    model: String,
+    model: {
+      type: String,
+      required: true,
+      enum: ["2 Side LED", "3 Side Premium", "3 Side", "Ultra Single Side"],
+    },
     vehicleNumber: { type: String, required: true },
     year: Number,
     fuelType: String,
@@ -79,11 +83,6 @@ const vehicleSchema = new mongoose.Schema(
       default: "",
     },
 
-    modelType: {
-      type: String,
-      required: true,
-      enum: ["2 Side LED", "3 Side Premium", "3 Side", "Ultra Single Side"],
-    },
 
     // ================= MEDIA =================
     mainImage: [String],
