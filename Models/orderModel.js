@@ -2,8 +2,12 @@ const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema(
   {
+    orderId: {
+      type: String,
+      unique: true,
+    },
     // ================= CUSTOMER DETAILS =================
-     userId: {
+    userId: {
       type: String,
       required: true,
     },
@@ -48,8 +52,32 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Confirmed", "Cancelled"],
       default: "Pending",
     },
+    // ================= SALES PIPELINE STATUS =================
+  pipelineStatus: {
+  type: String,
+  enum: [
+    "newOrder",
+    "proposal",
+    "negotiation",
+    "closedWon",
+    "closedLoss",
+  ],
+  default: "newOrder",
+},
+
+    pipelineLogs: [
+      {
+        fromStage: String,
+        toStage: String,
+        movedBy: String,
+        movedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Order", orderSchema);

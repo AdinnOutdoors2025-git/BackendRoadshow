@@ -931,13 +931,12 @@ app.get("/getVehicleModels", async (req, res) => {
 
 app.post("/createVehicle", vehicleUpload, async (req, res) => {
   try {
-    
     const files = req.files || {};
 
     const vehicleData = {
       ...req.body,
 
-       model: req.body.model,
+      model: req.body.model,
       city: req.body.city,
 
       mainImage: files.mainImage?.map((file) => file.filename) || [],
@@ -993,18 +992,11 @@ app.get("/getNewVehicles", async (req, res) => {
   }
 });
 
-/* ================Order creation =================== */
+/* ================ Orders Management =================== */
 // ================= ADD TO CART =================
 app.post("/addToCart", async (req, res) => {
   try {
-    const {
-      userId,
-      vehicleModel,
-      city,
-      quantity,
-      fromDate,
-      toDate,
-    } = req.body;
+    const { userId, vehicleModel, city, quantity, fromDate, toDate } = req.body;
 
     // ================= VALIDATION =================
     if (!userId) {
@@ -1016,7 +1008,9 @@ app.post("/addToCart", async (req, res) => {
     }
 
     if (quantity <= 0) {
-      return res.status(400).json({ message: "Quantity must be greater than 0" });
+      return res
+        .status(400)
+        .json({ message: "Quantity must be greater than 0" });
     }
 
     const start = new Date(fromDate);
@@ -1028,7 +1022,7 @@ app.post("/addToCart", async (req, res) => {
 
     // ================= VEHICLE CHECK =================
     const vehicleData = await vehicleDetails.findOne({
-      model: vehicleModel,   // FIXED (you changed schema)
+      model: vehicleModel, // FIXED (you changed schema)
       city: city,
     });
 
@@ -1043,8 +1037,7 @@ app.post("/addToCart", async (req, res) => {
     }
 
     // ================= CALCULATION =================
-    const totalDays =
-      Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
     const totalAmount = totalDays * quantity * pricePerDay;
 
@@ -1074,7 +1067,7 @@ app.post("/addToCart", async (req, res) => {
     // ================= RECALCULATE GRAND TOTAL =================
     cart.grandTotal = cart.items.reduce(
       (sum, item) => sum + item.totalAmount,
-      0
+      0,
     );
 
     await cart.save();
@@ -1083,7 +1076,6 @@ app.post("/addToCart", async (req, res) => {
       message: "Added to cart successfully",
       cart,
     });
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1092,14 +1084,7 @@ app.post("/addToCart", async (req, res) => {
 // ================= CREATE ORDER =================
 app.post("/orderCreation", async (req, res) => {
   try {
-    const {
-      userId,
-      name,
-      phone,
-      email,
-      companyName,
-      designation,
-    } = req.body;
+    const { userId, name, phone, email, companyName, designation } = req.body;
 
     if (!userId) throw new Error("User ID required");
     if (!name || !phone) throw new Error("Name and Phone required");
@@ -1125,7 +1110,33 @@ app.post("/orderCreation", async (req, res) => {
     //   }
     // }
 
+    // ================= ORDER ID GENERATION =================
+
+    const today = new Date();
+
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    const datePrefix = `${year}${month}${day}`;
+
+    const startOfDay = new Date(year, today.getMonth(), today.getDate());
+    const endOfDay = new Date(year, today.getMonth(), today.getDate() + 1);
+
+    const todayOrdersCount = await Order.countDocuments({
+      createdAt: {
+        $gte: startOfDay,
+        $lt: endOfDay,
+      },
+    });
+
+    const orderSequence = todayOrdersCount + 1;
+
+    const orderId = `${datePrefix}UO#${orderSequence}`;
+    // ================= CREATE ORDER =================
+
     const order = new Order({
+      orderId,
       userId,
       name,
       phone,
@@ -1134,17 +1145,27 @@ app.post("/orderCreation", async (req, res) => {
       designation,
       bookingItems: cart.items,
       grandTotal: cart.grandTotal,
+      pipelineLogs: [
+        {
+          fromStage: null,
+          toStage: "newOrder",
+          movedBy: "System",
+          movedAt: new Date(),
+        },
+      ],
     });
 
     await order.save();
 
     // UPDATE VEHICLES
     for (const item of cart.items) {
-      const vehiclesToBook = await vehicleDetails.find({
-        modelType: item.vehicleModel,  // 🔥 FIXED
-        city: item.city,
-        availability: "Available",
-      }).limit(item.quantity);
+      const vehiclesToBook = await vehicleDetails
+        .find({
+          modelType: item.vehicleModel, // 🔥 FIXED
+          city: item.city,
+          availability: "Available",
+        })
+        .limit(item.quantity);
 
       for (const vehicle of vehiclesToBook) {
         vehicle.availability = "Booked";
@@ -1158,14 +1179,70 @@ app.post("/orderCreation", async (req, res) => {
       message: "Order created successfully",
       order,
     });
-
   } catch (error) {
     res.status(400).json({
       message: error.message,
     });
   }
 });
-/* ================Order creation =================== */
+
+// ===================== Get all orders ==============
+app.get("/getOrders", async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      total: orders.length,
+      orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+// ===================== Get all orders ==============
+
+// ===================== Update order pipeline status
+app.put("/updateOrderPipeline/:orderId", async (req, res) => {
+  try {
+    const { pipelineStatus, movedBy } = req.body;
+
+    const order = await Order.findById(req.params.orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    const oldStage = order.pipelineStatus;
+
+    order.pipelineStatus = pipelineStatus;
+
+    order.pipelineLogs.push({
+      fromStage: oldStage,
+      toStage: pipelineStatus,
+      movedBy: movedBy || "Admin",
+      movedAt: new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({
+      message: "Pipeline updated successfully",
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+// ===================== Update order pipeline status
+
+/* ================ Orders Management =================== */
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
