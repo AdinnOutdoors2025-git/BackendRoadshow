@@ -127,7 +127,8 @@ app.use(express.static("public"));
 //   )
 
 mongoose
-  .connect("mongodb://127.0.0.1:27017/Roadshow", {
+  // .connect("mongodb://127.0.0.1:27017/Roadshow", {
+   .connect("mongodb://localhost:27017/Roadshow", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -1587,30 +1588,38 @@ app.get("/getOrders", async (req, res) => {
     });
   }
 });
-// ===================== Get all orders ==============
 
-// ===================== Update order pipeline status
+
+
+// ── Update order pipeline status
 app.put("/updateOrderPipeline/:orderId", async (req, res) => {
   try {
-    const { pipelineStatus, movedBy } = req.body;
+    const { pipelineStatus, movedBy, handlername ,reasonDescription  } = req.body;
 
     const order = await Order.findById(req.params.orderId);
 
     if (!order) {
-      return res.status(404).json({
-        message: "Order not found",
-      });
+      return res.status(404).json({ message: "Order not found" });
     }
 
     const oldStage = order.pipelineStatus;
 
+    // Update pipeline status
     order.pipelineStatus = pipelineStatus;
 
+    // Save handlername if provided (set when dragging from newOrder)
+  if (handlername !== undefined) {
+  order.handlername = handlername;
+}
+
+if (reasonDescription) order.reasonDescription = reasonDescription;
+
+    // Push log entry
     order.pipelineLogs.push({
       fromStage: oldStage,
-      toStage: pipelineStatus,
-      movedBy: movedBy || "Admin",
-      movedAt: new Date(),
+      toStage:   pipelineStatus,
+      movedBy:   movedBy || "Admin",
+      movedAt:   new Date(),
     });
 
     await order.save();
@@ -1620,14 +1629,11 @@ app.put("/updateOrderPipeline/:orderId", async (req, res) => {
       order,
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
-// ===================== Update order pipeline status
 
-/* ================ Orders Management =================== */
+// ===================== Update order pipeline status
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

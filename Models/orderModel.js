@@ -6,6 +6,15 @@ const orderSchema = new mongoose.Schema(
       type: String,
       unique: true,
     },
+      handlername: {
+      type: String,
+      
+    },
+
+    reasonDescription: {
+  type: String,
+},
+    
     // ================= CUSTOMER DETAILS =================
     userId: {
       type: String,
