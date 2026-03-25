@@ -12,6 +12,11 @@ const VehicleModel = require("./Models/VehicleModel");
 const vehicleDetails = require("./Models/vehicleDetails");
 const Cart = require("./Models/cartModel");
 const Order = require("./Models/orderModel");
+// ==================== ELECTION MODELS SCHEMA ====================
+const VehicleModelElection = require("./Models/VehicleModelElection");
+const VehiclesAvailabilityElection = require("./Models/VehiclesAvailabilityElection");
+
+
 
 //Image upload requirements
 const multer = require("multer");
@@ -677,6 +682,9 @@ app.delete("/deleteVehicle/:id", async (req, res) => {
   }
 });
 
+
+//VEHICLE AVAILABILITY MODEL GET & POST 
+
 app.post("/saveVehiclesAvailability", async (req, res) => {
   try {
     const {
@@ -869,7 +877,9 @@ app.delete("/deleteVehiclesAvailability/:id", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+//VEHICLE AVAILABILITY MODEL GET & POST 
 
+//VEHICLE MODEL GET & POST 
 app.post("/saveVehicleModel", async (req, res) => {
   try {
     const { modelName } = req.body;
@@ -924,6 +934,381 @@ app.get("/getVehicleModels", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       status: false,
+      message: "Server error",
+    });
+  }
+});
+//VEHICLE MODEL GET & POST 
+
+
+
+
+
+// ==================== ELECTION MODEL ENDPOINTS ====================
+
+// Save new vehicle model (election)
+app.post("/saveVehicleModelElection", async (req, res) => {
+  try {
+    const { modelName } = req.body;
+
+    if (!modelName || modelName.trim() === "") {
+      return res.status(400).json({
+        status: false,
+        message: "Model name is required",
+      });
+    }
+
+    // Check for duplicate (case-insensitive)
+    const existing = await VehicleModelElection.findOne({
+      modelName: { $regex: `^${modelName.trim()}$`, $options: "i" }
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        status: false,
+        message: "Model already exists",
+      });
+    }
+
+    const newModel = new VehicleModelElection({
+      modelName: modelName.trim().toUpperCase(),
+    });
+
+    await newModel.save();
+
+    res.status(201).json({
+      status: true,
+      message: "Model saved successfully",
+      data: newModel,
+    });
+  } catch (error) {
+    console.error("Error saving model:", error);
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+});
+
+// Get all vehicle models (election)
+app.get("/getVehicleModelsElection", async (req, res) => {
+  try {
+    const models = await VehicleModelElection.find().sort({ createdAt: -1 });
+
+    res.json({
+      status: true,
+      data: models,
+    });
+  } catch (error) {
+    console.error("Error fetching models:", error);
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+});
+// Update vehicle model (election)
+app.put("/updateVehicleModelElection/:id", async (req, res) => {
+  try {
+    const { modelName } = req.body;
+    const { id } = req.params;
+
+    if (!modelName || modelName.trim() === "") {
+      return res.status(400).json({
+        status: false,
+        message: "Model name is required",
+      });
+    }
+
+    // Check if model exists
+    const existingModel = await VehicleModelElection.findById(id);
+    if (!existingModel) {
+      return res.status(404).json({
+        status: false,
+        message: "Model not found",
+      });
+    }
+
+    // Check for duplicate model name (excluding current)
+    const duplicate = await VehicleModelElection.findOne({
+      _id: { $ne: id },
+      modelName: { $regex: `^${modelName.trim()}$`, $options: "i" }
+    });
+
+    if (duplicate) {
+      return res.status(400).json({
+        status: false,
+        message: "Model name already exists",
+      });
+    }
+
+    const updatedModelName = modelName.trim().toUpperCase();
+    
+    // Update the model
+    const updatedModel = await VehicleModelElection.findByIdAndUpdate(
+      id,
+      { modelName: updatedModelName },
+      { new: true }
+    );
+
+    // Update all availability records that reference this model
+    await VehiclesAvailabilityElection.updateMany(
+      { modelId: id },
+      { modelName: updatedModelName }
+    );
+
+    res.json({
+      status: true,
+      message: "Model updated successfully",
+      data: updatedModel,
+    });
+  } catch (error) {
+    console.error("Error updating model:", error);
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+});
+// Delete vehicle model (election) - Cascade delete associated availability
+app.delete("/deleteVehicleModelElection/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if model exists
+    const model = await VehicleModelElection.findById(id);
+    if (!model) {
+      return res.status(404).json({
+        status: false,
+        message: "Model not found",
+      });
+    }
+
+    // Delete all availability records associated with this model
+    await VehiclesAvailabilityElection.deleteMany({ modelId: id });
+
+    // Delete the model
+    await VehicleModelElection.findByIdAndDelete(id);
+
+    res.json({
+      status: true,
+      message: "Model and associated availability records deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting model:", error);
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+});
+// ==================== ELECTION AVAILABILITY ENDPOINTS ====================
+
+// Save vehicle availability (election)
+app.post("/saveVehiclesAvailabilityElection", async (req, res) => {
+  try {
+    const {
+      modelId,
+      modelName,
+      location,
+      availableCount,
+      unavailableCount,
+      remainingCount,
+      statusReason,
+    } = req.body;
+
+    // Validate required fields
+    if (!modelId || !modelName 
+      // || !location
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Model ID, Model Name, and Location are required",
+      });
+    }
+
+    // Check if model exists in VehicleModelElection
+    const modelExists = await VehicleModelElection.findById(modelId);
+    if (!modelExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Model not found in election models",
+      });
+    }
+
+    // Check for duplicate (same model and location)
+    const existing = await VehiclesAvailabilityElection.findOne({
+      modelId,
+      location: { $regex: `^${location.trim()}$`, $options: "i" }
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "Availability record already exists for this model and location",
+      });
+    }
+
+    const newAvailability = new VehiclesAvailabilityElection({
+      modelId,
+      modelName: modelName.trim(),
+      location: location.trim(),
+      availableCount: parseInt(availableCount) || 0,
+      unavailableCount: parseInt(unavailableCount) || 0,
+      remainingCount: parseInt(remainingCount) || 0,
+      statusReason: statusReason || "",
+    });
+
+    await newAvailability.save();
+
+    // Populate modelId to return full data
+    const populated = await VehiclesAvailabilityElection.findById(newAvailability._id)
+      .populate("modelId", "modelName");
+
+    res.json({
+      success: true,
+      message: "Saved successfully",
+      data: populated,
+    });
+  } catch (error) {
+    console.error("Error saving availability:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// Update vehicle availability (election)
+app.put("/updateVehiclesAvailabilityElection/:id", async (req, res) => {
+  try {
+    const {
+      modelId,
+      modelName,
+      location,
+      availableCount,
+      unavailableCount,
+      remainingCount,
+      statusReason,
+    } = req.body;
+
+    const availability = await VehiclesAvailabilityElection.findById(req.params.id);
+
+    if (!availability) {
+      return res.status(404).json({
+        success: false,
+        message: "Record not found",
+      });
+    }
+
+    // Validate model exists
+    if (modelId) {
+      const modelExists = await VehicleModelElection.findById(modelId);
+      if (!modelExists) {
+        return res.status(404).json({
+          success: false,
+          message: "Model not found in election models",
+        });
+      }
+    }
+
+    // Check for duplicate (exclude current record)
+    if (modelId && location) {
+      const duplicate = await VehiclesAvailabilityElection.findOne({
+        _id: { $ne: req.params.id },
+        modelId,
+        location: { $regex: `^${location.trim()}$`, $options: "i" }
+      });
+
+      if (duplicate) {
+        return res.status(400).json({
+          success: false,
+          message: "Availability record already exists for this model and location",
+        });
+      }
+    }
+
+    const updated = await VehiclesAvailabilityElection.findByIdAndUpdate(
+      req.params.id,
+      {
+        modelId: modelId || availability.modelId,
+        modelName: modelName?.trim() || availability.modelName,
+        location: location?.trim() || availability.location,
+        availableCount: availableCount !== undefined ? parseInt(availableCount) : availability.availableCount,
+        unavailableCount: unavailableCount !== undefined ? parseInt(unavailableCount) : availability.unavailableCount,
+        remainingCount: remainingCount !== undefined ? parseInt(remainingCount) : availability.remainingCount,
+        statusReason: statusReason !== undefined ? statusReason : availability.statusReason,
+      },
+      { new: true, runValidators: true }
+    ).populate("modelId", "modelName");
+
+    res.json({
+      success: true,
+      message: "Updated successfully",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Error updating availability:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// Get all vehicle availability (election)
+app.get("/getVehiclesAvailabilityElection", async (req, res) => {
+  try {
+    const data = await VehiclesAvailabilityElection.find()
+      .populate("modelId", "modelName")
+      .sort({ createdAt: -1 });
+
+    const formatted = data.map((item) => ({
+      _id: item._id,
+      modelId: item.modelId,
+      modelName: item.modelName,
+      location: item.location,
+      availableCount: item.availableCount,
+      unavailableCount: item.unavailableCount,
+      remainingCount: item.remainingCount,
+      statusReason: item.statusReason,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    }));
+
+    res.json({
+      success: true,
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("Error fetching availability:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// Delete vehicle availability (election)
+app.delete("/deleteVehiclesAvailabilityElection/:id", async (req, res) => {
+  try {
+    const deleted = await VehiclesAvailabilityElection.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Record not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting availability:", error);
+    res.status(500).json({
+      success: false,
       message: "Server error",
     });
   }
