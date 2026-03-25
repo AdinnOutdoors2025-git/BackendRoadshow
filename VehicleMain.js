@@ -1425,7 +1425,7 @@ app.post("/addToCart", async (req, res) => {
     // ================= CALCULATION =================
     const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
-    const totalAmount = totalDays * quantity * pricePerDay;
+   
 
     // ================= GET USER CART =================
     let cart = await Cart.findOne({ userId });
@@ -1439,17 +1439,47 @@ app.post("/addToCart", async (req, res) => {
     }
 
     // ================= PUSH ITEM =================
-    cart.items.push({
-      vehicleModel,
-      city,
-      quantity,
-      fromDate: start,
-      toDate: end,
-      totalDays,
-      pricePerDay,
-      totalAmount,
+    // cart.items.push({
+    //   vehicleModel,
+    //   city,
+    //   quantity,
+    //   fromDate: start,
+    //   toDate: end,
+    //   totalDays,
+    //   pricePerDay,
+    //   totalAmount,
+    // });
+
+    const existingItemIndex = cart.items.findIndex((item) => {
+      return (
+        item.vehicleModel === vehicleModel &&
+        item.city === city 
+      );
     });
 
+    if (existingItemIndex !== -1) {
+      // ===== UPDATE EXISTING ITEM =====
+      const existingItem = cart.items[existingItemIndex];
+
+      existingItem.quantity += quantity;
+      existingItem.totalAmount = existingItem.quantity * totalDays * pricePerDay;
+
+      cart.items[existingItemIndex] = existingItem;
+    } else {
+      // ===== PUSH NEW ITEM =====
+      const totalAmount = totalDays * quantity * pricePerDay;
+
+      cart.items.push({
+        vehicleModel,
+        city,
+        quantity,
+        fromDate: start,
+        toDate: end,
+        totalDays,
+        pricePerDay,
+        totalAmount,
+      });
+    }
     // ================= RECALCULATE GRAND TOTAL =================
     cart.grandTotal = cart.items.reduce(
       (sum, item) => sum + item.totalAmount,
