@@ -9,9 +9,13 @@ const vehicleData = require("./Models/VehicleMainSchema");
 const Vehicle = require("./Models/entryVehicles");
 const VehiclesAvailability = require("./Models/vehiclesAvailability");
 const VehicleModel = require("./Models/VehicleModel");
+
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
 const vehicleDetails = require("./Models/vehicleDetails");
 const Cart = require("./Models/cartModel");
 const Order = require("./Models/orderModel");
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+
 // ==================== ELECTION MODELS SCHEMA ====================
 const VehicleModelElection = require("./Models/VehicleModelElection");
 const VehiclesAvailabilityElection = require("./Models/VehiclesAvailabilityElection");
@@ -152,6 +156,7 @@ cloudinary.config({
   api_secret: "i4fzWaXH_32kQYkwWb3U-pLxKd4",
   secure: true, // Add this for HTTPS
 });
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
 
 const vehicleUpload = multer({
   storage: storage, // reuse existing storage
@@ -164,6 +169,8 @@ const vehicleUpload = multer({
   { name: "brandingSample", maxCount: 4 },
   { name: "vehicleVideo", maxCount: 4 },
 ]);
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+
 
 // Configure storage for main image upload
 const imageStorage = new CloudinaryStorage({
@@ -1315,6 +1322,10 @@ app.delete("/deleteVehiclesAvailabilityElection/:id", async (req, res) => {
   }
 });
 
+
+
+
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
 app.post("/createVehicle", vehicleUpload, async (req, res) => {
   try {
     const files = req.files || {};
@@ -1706,6 +1717,8 @@ if (reasonDescription) order.reasonDescription = reasonDescription;
 });
 
 // ===================== Update order pipeline status
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
