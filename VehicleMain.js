@@ -1497,6 +1497,48 @@ app.post("/addToCart", async (req, res) => {
   }
 });
 
+ 
+
+app.get("/getCart/:userId", async (req, res) => {
+  
+  try {
+    const { userId } = req.params;
+
+    // ================= VALIDATION =================
+    if (!userId) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+
+    // ================= FETCH CART =================
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(404).json({ message: "Cart is empty" });
+    }
+
+  
+    res.status(200).json({
+      message: "Cart fetched successfully",
+      userId: cart.userId,
+      totalItems: cart.items.length,
+      grandTotal: cart.grandTotal,
+      items: cart.items.map((item) => ({
+        vehicleModel: item.vehicleModel,
+        city: item.city,
+        quantity: item.quantity,
+        fromDate: item.fromDate,
+        toDate: item.toDate,
+        totalDays: item.totalDays,
+        pricePerDay: item.pricePerDay,
+        totalAmount: item.totalAmount,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // ================= CREATE ORDER =================
 app.post("/orderCreation", async (req, res) => {
   try {
