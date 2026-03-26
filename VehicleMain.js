@@ -9,6 +9,13 @@ const vehicleData = require("./Models/VehicleMainSchema");
 const Vehicle = require("./Models/entryVehicles");
 const VehiclesAvailability = require("./Models/vehiclesAvailability");
 const VehicleModel = require("./Models/VehicleModel");
+
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+const vehicleDetails = require("./Models/vehicleDetails");
+const Cart = require("./Models/cartModel");
+const Order = require("./Models/orderModel");
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+
 // ==================== ELECTION MODELS SCHEMA ====================
 const VehicleModelElection = require("./Models/VehicleModelElection");
 const VehiclesAvailabilityElection = require("./Models/VehiclesAvailabilityElection");
@@ -148,6 +155,20 @@ cloudinary.config({
   api_secret: "i4fzWaXH_32kQYkwWb3U-pLxKd4",
   secure: true, // Add this for HTTPS
 });
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+
+const vehicleUpload = multer({
+  storage: storage, // reuse existing storage
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}).fields([
+  { name: "mainImage", maxCount: 4 },
+  { name: "sideImages", maxCount: 4 },
+  { name: "interiorImages", maxCount: 4 },
+  { name: "ledDisplayImage", maxCount: 4 },
+  { name: "brandingSample", maxCount: 4 },
+  { name: "vehicleVideo", maxCount: 4 },
+]);
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
 
 // Configure storage for main image upload
 const imageStorage = new CloudinaryStorage({
@@ -1298,6 +1319,404 @@ app.delete("/deleteVehiclesAvailabilityElection/:id", async (req, res) => {
     });
   }
 });
+
+
+
+
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+app.post("/createVehicle", vehicleUpload, async (req, res) => {
+  try {
+    const files = req.files || {};
+
+    const vehicleData = {
+      ...req.body,
+
+      model: req.body.model,
+      city: req.body.city,
+
+      mainImage: files.mainImage?.map((file) => file.filename) || [],
+
+      sideImages: files.sideImages?.map((file) => file.filename) || [],
+
+      interiorImages: files.interiorImages?.map((file) => file.filename) || [],
+
+      ledDisplayImage:
+        files.ledDisplayImage?.map((file) => file.filename) || [],
+
+      brandingSample: files.brandingSample?.map((file) => file.filename) || [],
+
+      vehicleVideo: files.vehicleVideo?.map((file) => file.filename) || [],
+    };
+
+    const newVehicle = new vehicleDetails(vehicleData);
+    const savedVehicle = await newVehicle.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Vehicle Created Successfully",
+      data: savedVehicle,
+    });
+  } catch (error) {
+    console.error("Create Vehicle Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error Creating Vehicle",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/getNewVehicles", async (req, res) => {
+  try {
+    const vehicles = await vehicleDetails.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: vehicles.length,
+      data: vehicles,
+    });
+  } catch (error) {
+    console.error("Get Vehicles Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error Fetching Vehicles",
+      error: error.message,
+    });
+  }
+});
+
+/* ================ Orders Management =================== */
+// ================= ADD TO CART =================
+app.post("/addToCart", async (req, res) => {
+  try {
+    const { userId, vehicleModel, city, quantity, fromDate, toDate } = req.body;
+
+    // ================= VALIDATION =================
+    if (!userId) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+
+    if (!vehicleModel || !city || !quantity || !fromDate || !toDate) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    if (quantity <= 0) {
+      return res
+        .status(400)
+        .json({ message: "Quantity must be greater than 0" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+
+    if (end < start) {
+      return res.status(400).json({ message: "Invalid date range" });
+    }
+
+    // ================= VEHICLE CHECK =================
+    const vehicleData = await vehicleDetails.findOne({
+      model: vehicleModel, // FIXED (you changed schema)
+      city: city,
+    });
+
+    if (!vehicleData) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    const pricePerDay = Number(vehicleData.basePrice);
+
+    if (!pricePerDay || pricePerDay <= 0) {
+      return res.status(400).json({ message: "Invalid vehicle price" });
+    }
+
+    // ================= CALCULATION =================
+    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+   
+
+    // ================= GET USER CART =================
+    let cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      cart = new Cart({
+        userId,
+        items: [],
+        grandTotal: 0,
+      });
+    }
+
+    // ================= PUSH ITEM =================
+    // cart.items.push({
+    //   vehicleModel,
+    //   city,
+    //   quantity,
+    //   fromDate: start,
+    //   toDate: end,
+    //   totalDays,
+    //   pricePerDay,
+    //   totalAmount,
+    // });
+
+    const existingItemIndex = cart.items.findIndex((item) => {
+      return (
+        item.vehicleModel === vehicleModel &&
+        item.city === city 
+      );
+    });
+
+    if (existingItemIndex !== -1) {
+      // ===== UPDATE EXISTING ITEM =====
+      const existingItem = cart.items[existingItemIndex];
+
+      existingItem.quantity += quantity;
+      existingItem.totalAmount = existingItem.quantity * totalDays * pricePerDay;
+
+      cart.items[existingItemIndex] = existingItem;
+    } else {
+      // ===== PUSH NEW ITEM =====
+      const totalAmount = totalDays * quantity * pricePerDay;
+
+      cart.items.push({
+        vehicleModel,
+        city,
+        quantity,
+        fromDate: start,
+        toDate: end,
+        totalDays,
+        pricePerDay,
+        totalAmount,
+      });
+    }
+    // ================= RECALCULATE GRAND TOTAL =================
+    cart.grandTotal = cart.items.reduce(
+      (sum, item) => sum + item.totalAmount,
+      0,
+    );
+
+    await cart.save();
+
+    res.status(200).json({
+      message: "Added to cart successfully",
+      cart,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+ 
+
+app.get("/getCart/:userId", async (req, res) => {
+  
+  try {
+    const { userId } = req.params;
+
+    // ================= VALIDATION =================
+    if (!userId) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+
+    // ================= FETCH CART =================
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(404).json({ message: "Cart is empty" });
+    }
+
+  
+    res.status(200).json({
+      message: "Cart fetched successfully",
+      userId: cart.userId,
+      totalItems: cart.items.length,
+      grandTotal: cart.grandTotal,
+      items: cart.items.map((item) => ({
+        vehicleModel: item.vehicleModel,
+        city: item.city,
+        quantity: item.quantity,
+        fromDate: item.fromDate,
+        toDate: item.toDate,
+        totalDays: item.totalDays,
+        pricePerDay: item.pricePerDay,
+        totalAmount: item.totalAmount,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// ================= CREATE ORDER =================
+app.post("/orderCreation", async (req, res) => {
+  try {
+    const { userId, name, phone, email, companyName, designation } = req.body;
+
+    if (!userId) throw new Error("User ID required");
+    if (!name || !phone) throw new Error("Name and Phone required");
+
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart || cart.items.length === 0) {
+      throw new Error("Cart is empty for this user");
+    }
+
+    // CHECK AVAILABILITY
+    // for (const item of cart.items) {
+    //   const availableCount = await vehicleDetails.countDocuments({
+    //     modelType: item.vehicleModel,  // 🔥 FIXED
+    //     city: item.city,
+    //     availability: "Available",
+    //   });
+
+    //   if (availableCount < item.quantity) {
+    //     throw new Error(
+    //       `Only ${availableCount} vehicles available for ${item.vehicleModel} in ${item.city}`
+    //     );
+    //   }
+    // }
+
+    // ================= ORDER ID GENERATION =================
+
+    const today = new Date();
+
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    const datePrefix = `${year}${month}${day}`;
+
+    const startOfDay = new Date(year, today.getMonth(), today.getDate());
+    const endOfDay = new Date(year, today.getMonth(), today.getDate() + 1);
+
+    const todayOrdersCount = await Order.countDocuments({
+      createdAt: {
+        $gte: startOfDay,
+        $lt: endOfDay,
+      },
+    });
+
+    const orderSequence = todayOrdersCount + 1;
+
+    const orderId = `${datePrefix}UO#${orderSequence}`;
+    // ================= CREATE ORDER =================
+
+    const order = new Order({
+      orderId,
+      userId,
+      name,
+      phone,
+      email,
+      companyName,
+      designation,
+      bookingItems: cart.items,
+      grandTotal: cart.grandTotal,
+      pipelineLogs: [
+        {
+          fromStage: null,
+          toStage: "newOrder",
+          movedBy: "System",
+          movedAt: new Date(),
+        },
+      ],
+    });
+
+    await order.save();
+
+    // UPDATE VEHICLES
+    for (const item of cart.items) {
+      const vehiclesToBook = await vehicleDetails
+        .find({
+          modelType: item.vehicleModel, // 🔥 FIXED
+          city: item.city,
+          availability: "Available",
+        })
+        .limit(item.quantity);
+
+      for (const vehicle of vehiclesToBook) {
+        vehicle.availability = "Booked";
+        await vehicle.save();
+      }
+    }
+
+    await Cart.deleteOne({ userId });
+
+    res.status(200).json({
+      message: "Order created successfully",
+      order,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+});
+
+// ===================== Get all orders ==============
+app.get("/getOrders", async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      total: orders.length,
+      orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
+
+
+// ── Update order pipeline status
+app.put("/updateOrderPipeline/:orderId", async (req, res) => {
+  try {
+    const { pipelineStatus, movedBy, handlername ,reasonDescription  } = req.body;
+
+    const order = await Order.findById(req.params.orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const oldStage = order.pipelineStatus;
+
+    // Update pipeline status
+    order.pipelineStatus = pipelineStatus;
+
+    // Save handlername if provided (set when dragging from newOrder)
+  if (handlername !== undefined) {
+  order.handlername = handlername;
+}
+
+if (reasonDescription) order.reasonDescription = reasonDescription;
+
+    // Push log entry
+    order.pipelineLogs.push({
+      fromStage: oldStage,
+      toStage:   pipelineStatus,
+      movedBy:   movedBy || "Admin",
+      movedAt:   new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({
+      message: "Pipeline updated successfully",
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ===================== Update order pipeline status
+//ORDER MANAGEMENT AND ADD TO CART , ORDER CREATION CODES
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
