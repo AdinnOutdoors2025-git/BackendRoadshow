@@ -8,7 +8,7 @@ const vehicleSchema = new mongoose.Schema(
     model: {
       type: String,
       required: true,
-      enum: ["2 Side LED", "3 Side Premium", "3 Side", "Ultra Single Side"],
+      // enum: ["2 Side LED", "3 Side Premium", "3 Side", "Ultra Single Side"],
     },
     vehicleNumber: { type: String, required: true },
     year: Number,
