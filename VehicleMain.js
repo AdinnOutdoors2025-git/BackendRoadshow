@@ -20,7 +20,7 @@ const orderRoutes = require("../BackendRoadshow/Routes/OrderRoutes/orderRoutes")
 const adminAuthRoutes = require('../BackendRoadshow/Routes/Adminauthroutes/adminroutes');
 const employeeAuthRoutes = require('./Routes/Employeeauthroutes/employeeauthroutes');
 const vehicleOfferRoutes = require('./Routes/vehicleOfferRoutes/vehicleOffer');
-
+const EnquiryRoutes = require("./Routes/EnquiryRoutes/Enquiry");
 
 //Image upload requirements
 const multer = require("multer");
@@ -164,6 +164,7 @@ app.use(orderRoutes);
 app.use(adminAuthRoutes);
 app.use(employeeAuthRoutes);
 app.use('/vehicleoffers', vehicleOfferRoutes);
+app.use(EnquiryRoutes);
 
 
 // VEHICLE DETAILS STORED WITH CRUD OPERATIONS

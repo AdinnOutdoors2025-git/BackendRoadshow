@@ -11,9 +11,7 @@ const {
 const vehicleUpload = require("../../Middleware/vehicleDetailsUpload");
 // const { protect } = require("../../Middleware/authmiddleware"); 
 const {
-    protect,
-    isAdmin,
-    verifyAdminExists,
+    protect
 } = require('../../Middleware/rolemiddleware');
 
 router.post("/createVehicle",protect, vehicleUpload, createVehicle);

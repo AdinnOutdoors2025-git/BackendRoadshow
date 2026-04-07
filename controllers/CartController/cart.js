@@ -13,16 +13,7 @@ exports.addToCart = async (req, res) => {
 
       const userId = req.user._id;
 
-    // if (!userId) {
-    //   return res.status(400).json({ message: "User ID required" });
-    // }
-
-    // if (userId !== req.user._id.toString()) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "User not found",
-    //   });
-    // }
+  
 
     if (!vehicleModel || !city || !quantity || !fromDate || !toDate) {
       return res.status(400).json({ message: "All fields required" });
@@ -61,6 +52,7 @@ const vehicleData = await vehicleDetails.findOne({
     }
 
     const pricePerDay = Number(vehicleData.basePrice);
+    const vehicleImage = vehicleData.mainImage?.[0] || "";
 
     let cart = await Cart.findOne({ userId });
 
@@ -92,6 +84,7 @@ const vehicleData = await vehicleDetails.findOne({
         pricePerDay,
       });
 
+      existingItem.vehicleImage = vehicleImage;
       existingItem.quantity = newQuantity;
       existingItem.fromDate = start;
       existingItem.toDate = end;
@@ -117,6 +110,7 @@ const vehicleData = await vehicleDetails.findOne({
       cart.items.push({
         vehicleModel,
         city,
+        vehicleImage,
         quantity,
         fromDate: start,
         toDate: end,

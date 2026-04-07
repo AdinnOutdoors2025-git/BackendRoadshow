@@ -41,6 +41,7 @@ const orderSchema = new mongoose.Schema(
     bookingItems: [
       {
         vehicleModel: String,
+        vehicleImage:String,
         city: String,
         quantity: Number,
         fromDate: Date,
