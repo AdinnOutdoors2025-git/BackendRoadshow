@@ -2,6 +2,14 @@
 const mongoose = require("mongoose");
 
 const cartItemSchema = new mongoose.Schema({
+
+    
+  //    vehicleId: {
+  //  type: mongoose.Schema.Types.ObjectId,
+  //     required: true,
+    
+  //   },
+
   vehicleModel: {
     type: String,
     required: true,

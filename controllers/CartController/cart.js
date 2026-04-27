@@ -3,13 +3,14 @@ const Cart = require("../../Models/Cartmodel/cart");
 const vehicleDetails = require("../../Models/vehicleDetails");
 
 const { calculateOfferDetails } = require("../../ReusableComponents/reusableOfferLogic");
-
+const VehicleModel = require("../../Models/VehicleModel");
 
 
 // ================= ADD TO CART =================
+
 exports.addToCart = async (req, res) => {
   try {
-    const {  vehicleModel, city, quantity, fromDate, toDate } = req.body;
+    const {vehicleModel, city, quantity, fromDate, toDate } = req.body;
 
       const userId = req.user._id;
 
@@ -28,24 +29,23 @@ exports.addToCart = async (req, res) => {
 
     if (end < start) {
       return res.status(400).json({ message: "Invalid date range" });
+      
     }
 
-    // const vehicleData = await vehicleDetails.findOne({
-    //   model: vehicleModel,
-    //   city: city,
-    // });
+  const modelExists = await VehicleModel.findOne({ modelName: vehicleModel });
+    if (!modelExists) {
+      return res.status(404).json({ 
+        message: `"${vehicleModel}" model is not available` 
+      });
+    }
 
-    const normalizedModel = vehicleModel.trim().toLowerCase();
-const normalizedCity = city.trim().toLowerCase();
 
-const vehicleData = await vehicleDetails.findOne({
-  $expr: {
-    $and: [
-      { $eq: [{ $toLower: "$model" }, normalizedModel] },
-      { $eq: [{ $toLower: "$city" }, normalizedCity] },
-    ],
-  },
-});
+    const vehicleData = await vehicleDetails.findOne({
+      model: vehicleModel,
+      city: city,
+    });
+
+
 
     if (!vehicleData) {
       return res.status(404).json({ message: "Vehicle not found" });
@@ -60,15 +60,15 @@ const vehicleData = await vehicleDetails.findOne({
       cart = new Cart({ userId, items: [], grandTotal: 0 });
     }
 
-    // const existingItemIndex = cart.items.findIndex(
-    //   (item) => item.vehicleModel === vehicleModel && item.city === city
-    // );
-
     const existingItemIndex = cart.items.findIndex(
-  (item) =>
-    item.vehicleModel.toLowerCase() === normalizedModel &&
-    item.city.toLowerCase() === normalizedCity
-);
+      (item) => item.vehicleModel === vehicleModel && item.city === city
+    );
+
+//     const existingItemIndex = cart.items.findIndex(
+//   (item) =>
+//     item.vehicleModel.toLowerCase() === normalizedModel &&
+//     item.city.toLowerCase() === normalizedCity
+// );
 
     if (existingItemIndex !== -1) {
       // ── Quantity add panni recalculate ───
@@ -140,7 +140,141 @@ const vehicleData = await vehicleDetails.findOne({
 };
 
 
+// exports.addToCart = async (req, res) => {
+//   try {
+//     const { vehicleId, quantity, fromDate, toDate } = req.body;
+//     const userId = req.user._id;
+
+//     // ── Validation ───
+//     if (!vehicleId || !quantity || !fromDate || !toDate) {
+//       return res.status(400).json({ message: "All fields required" });
+//     }
+
+//     if (quantity <= 0) {
+//       return res.status(400).json({ message: "Quantity must be greater than 0" });
+//     }
+
+//     const start = new Date(fromDate);
+//     const end = new Date(toDate);
+
+//     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+//       return res.status(400).json({ message: "Invalid date format" });
+//     }
+
+//     if (end < start) {
+//       return res.status(400).json({ message: "Invalid date range" });
+//     }
+
+//     // ── vehicleId வச்சு vehicle check ───
+//   const vehicleData = await vehicleDetails.findById(vehicleId);
+
+// console.log("vehicleId from body:", vehicleId);
+// console.log("vehicleData:", vehicleData);
+// console.log("vehicleData._id:", vehicleData?._id);
+
+//     if (!vehicleData) {
+//       return res.status(404).json({ message: "Vehicle not found" });
+//     }
+
+//     // ── Vehicle data extract ───
+//     const vehicleModel = vehicleData.model;
+//     const city = vehicleData.city;
+//     const pricePerDay = Number(vehicleData.basePrice);
+//     const vehicleImage = vehicleData.mainImage?.[0] || "";
+
+//     // ── Cart find or create ───
+//     let cart = await Cart.findOne({ userId });
+//     if (!cart) {
+//       cart = new Cart({ userId, items: [], grandTotal: 0 });
+//     }
+
+//     // ── Existing item check (same vehicleId) ───
+//     // const existingItemIndex = cart.items.findIndex(
+//     //   (item) => item.vehicleId === vehicleId.toString()
+//     // );
+
+// const existingItemIndex = cart.items.findIndex(
+//   (item) => item.vehicleId && item.vehicleId.toString() === vehicleData._id.toString()
+// );
+
+//     if (existingItemIndex !== -1) {
+//       // ── Update existing item ───
+//       const existingItem = cart.items[existingItemIndex];
+//       const newQuantity = existingItem.quantity + quantity;
+
+//       const offerDetails = await calculateOfferDetails({
+//         vehicleModel,
+//         fromDate: start,
+//         toDate: end,
+//         quantity: newQuantity,
+//         pricePerDay,
+//       });
+
+//       existingItem.vehicleImage    = vehicleImage;
+//       existingItem.quantity        = newQuantity;
+//       existingItem.fromDate        = start;
+//       existingItem.toDate          = end;
+//       existingItem.pricePerDay     = pricePerDay;
+//       existingItem.totalDays       = offerDetails.totalDays;
+//       existingItem.discountDays    = offerDetails.discountDays;
+//       existingItem.noDiscountDays  = offerDetails.noDiscountDays;
+//       existingItem.discountPercentage = offerDetails.discountPercentage;
+//       existingItem.discountAmount  = offerDetails.discountAmount;
+//       existingItem.noDiscountAmount = offerDetails.noDiscountAmount;
+//       existingItem.actualAmount    = offerDetails.actualAmount;
+//       existingItem.totalAmount     = offerDetails.totalAmount;
+//     } else {
+//       // ── Add new item ───
+//       const offerDetails = await calculateOfferDetails({
+//         vehicleModel,
+//         fromDate: start,
+//         toDate: end,
+//         quantity,
+//         pricePerDay,
+//       });
+
+//       console.log("offerDetails:", offerDetails);
+
+//       cart.items.push({
+//         vehicleId: vehicleData._id, 
+//         vehicleModel,
+//         city,
+//         vehicleImage,
+//         quantity,
+//         fromDate: start,
+//         toDate: end,
+//         pricePerDay,
+//         totalDays:           offerDetails.totalDays,
+//         discountDays:        offerDetails.discountDays,
+//         noDiscountDays:      offerDetails.noDiscountDays,
+//         discountPercentage:  offerDetails.discountPercentage,
+//         discountAmount:      offerDetails.discountAmount,
+//         noDiscountAmount:    offerDetails.noDiscountAmount,
+//         actualAmount:        offerDetails.actualAmount,
+//         totalAmount:         offerDetails.totalAmount,
+//       });
+//     }
+
+//     console.log("pushing vehicleId:", vehicleData._id, typeof vehicleData._id);
+//     console.log("cart.items after push:", JSON.stringify(cart.items, null, 2));
+
+//     cart.grandTotal = cart.items.reduce((sum, item) => sum + item.totalAmount, 0);
+//     await cart.save();
+
+//     return res.status(200).json({
+//       message: "Added to cart successfully",
+//       cart,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
 // ================= GET CART =================
+
+
+
+
 exports.getCart = async (req, res) => {
   try {
     const userId = req.user._id;

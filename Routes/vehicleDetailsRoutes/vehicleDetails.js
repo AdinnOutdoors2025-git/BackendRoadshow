@@ -3,7 +3,7 @@ const router = express.Router();
 
 const {
   createVehicle,
-  getNewVehicles,
+  getNewVehicles,updateVehicle
 } = require("../../controllers/VehicleDetailsController/vehicledetails");
 
 
@@ -14,7 +14,13 @@ const {
     protect
 } = require('../../Middleware/rolemiddleware');
 
+
+
 router.post("/createVehicle",protect, vehicleUpload, createVehicle);
 router.get("/getNewVehicles",protect, getNewVehicles);
+router.put("/updateVehicle/:id", protect,vehicleUpload, updateVehicle);
+
+
+
 
 module.exports = router;

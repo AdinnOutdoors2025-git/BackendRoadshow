@@ -19,6 +19,7 @@ const enquirySchema = new mongoose.Schema(
     userPreferredLocation: { type: String, required: true },
     userStartDate: { type: Date, required: true },
     userEndDate: { type: Date, required: true },
+    userPreferredvehicle: { type: String,  required: true },
     userEnquiryMessage: { type: String, default: "" },
     apiStatus: { type: String, default: "success" },
   },

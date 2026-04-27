@@ -92,6 +92,21 @@ const orderSchema = new mongoose.Schema(
         },
       },
     ],
+
+    negotiationLogs: [
+  {
+    fromStage: String,
+    toStage: String,
+    movedBy: String,
+    movedAt: { type: Date, default: Date.now },
+    amount: Number,
+  },
+],
+
+grandNegotiationTotal: {
+  type: Number,
+  default: null,
+},
   },
   { timestamps: true },
 );

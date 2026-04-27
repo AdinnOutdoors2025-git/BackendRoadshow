@@ -11,6 +11,7 @@ const sendRoadshowEnquiry = async (req, res) => {
       userPreferredLocation,
       userStartDate,
       userEndDate,
+      userPreferredvehicle,
       userEnquiryMessage,
     } = req.body;
 
@@ -22,7 +23,8 @@ const sendRoadshowEnquiry = async (req, res) => {
       !userContactNumber ||
       !userPreferredLocation ||
       !userStartDate ||
-      !userEndDate
+      !userEndDate ||
+      !userPreferredvehicle
     ) {
       return res.status(400).json({
         status: "error",
@@ -38,12 +40,13 @@ const sendRoadshowEnquiry = async (req, res) => {
       userPreferredLocation,
       userStartDate,
       userEndDate,
+      userPreferredvehicle,
       userEnquiryMessage: userEnquiryMessage || "",
     };
 
     // Step 1: External API Call
     const apiResponse = await axios.post(
-      process.env.EXTERNAL_API_URL,
+     
       payload,
       {
         headers: {

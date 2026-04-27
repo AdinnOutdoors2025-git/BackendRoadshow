@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const AdminUser = require('../../Models/MainLoginSchema');
 
 const JWT_SECRET     = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 const ADMIN_SECRET   = 'ADMIN2025';
 
 // ── Generate JWT ──────────────────────────────────────────────────────────────

@@ -21,6 +21,9 @@ const adminAuthRoutes = require('../BackendRoadshow/Routes/Adminauthroutes/admin
 const employeeAuthRoutes = require('./Routes/Employeeauthroutes/employeeauthroutes');
 const vehicleOfferRoutes = require('./Routes/vehicleOfferRoutes/vehicleOffer');
 const EnquiryRoutes = require("./Routes/EnquiryRoutes/Enquiry");
+const dashboardRoutes = require("./Routes/Dashboard/dashboard");
+const productenquiry = require("./Routes/Productenquiry/productenquiry");
+
 
 //Image upload requirements
 const multer = require("multer");
@@ -150,6 +153,7 @@ mongoose
 // app.use("/EmployeeLogin", require("./LoginMain"));
 
 // ─── Routes ──────────────────────────────────
+app.use(newVehicleRoutes);
 
 app.use("/auth", authRoutes);
 app.use("/vehicles", vehicleRoutes);
@@ -158,13 +162,14 @@ app.use(vehiclesAvailabilityRoutes);
 app.use(vehicleModelRoutes);
 app.use(vehicleModelElectionRoutes);
 app.use(vehiclesAvailabilityElectionRoutes);
-app.use(newVehicleRoutes);
 app.use(cartRoutes);
 app.use(orderRoutes);
 app.use(adminAuthRoutes);
 app.use(employeeAuthRoutes);
 app.use('/vehicleoffers', vehicleOfferRoutes);
 app.use(EnquiryRoutes);
+app.use(dashboardRoutes);
+app.use('/productenquiry', productenquiry);
 
 
 // VEHICLE DETAILS STORED WITH CRUD OPERATIONS
