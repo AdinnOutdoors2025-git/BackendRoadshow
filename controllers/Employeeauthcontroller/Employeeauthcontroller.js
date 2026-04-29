@@ -32,7 +32,7 @@ const buildResponse = (employee) => ({
 
 // ─── REGISTER ─────────────────────────────────────────────────────────────────
 // POST /api/employee/register
-// Body: { employeeName, employeeEmail, secretCode }
+
 const registerEmployee = async (req, res) => {
     const { employeeName, employeeEmail, secretCode } = req.body;
 
@@ -101,7 +101,7 @@ const registerEmployee = async (req, res) => {
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 // POST /api/employee/login
-// Body: { employeeEmail, secretCode }
+
 const loginEmployee = async (req, res) => {
     const { employeeEmail, secretCode } = req.body;
 
@@ -162,7 +162,7 @@ const loginEmployee = async (req, res) => {
 
 // ─── GET PROFILE (protected) ──────────────────────────────────────────────────
 // GET /api/employee/me
-// Header: Authorization: Bearer <token>
+
 const getEmployeeProfile = (req, res) => {
     // req.employee attached by verifyEmployeeExists middleware
     return res.status(200).json({

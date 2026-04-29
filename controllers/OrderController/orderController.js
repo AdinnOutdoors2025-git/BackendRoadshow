@@ -172,7 +172,7 @@ exports.createOrder = async (req, res) => {
         }),
       };
 
-      console.log("📤 Sending Payload:", externalPayload);
+      console.log(" Sending Payload:", externalPayload);
 
       const response = await fetch(process.env.EXTERNAL_API_URL, {
         method: "POST",
@@ -184,18 +184,18 @@ exports.createOrder = async (req, res) => {
 
       console.log("process.env.EXTERNAL_API_URL", process.env.EXTERNAL_API_URL)
 
-      console.log("📥 Status Code:", response.status);
+      console.log(" Status Code:", response.status);
 
       if (response.ok) {
         const data = await response.text(); // or .json()
-        console.log("✅ API Success:", data);
+        console.log(" API Success:", data);
       } else {
         const errorText = await response.text();
-        console.error("❌ API Failed:", errorText);
+        console.error(" API Failed:", errorText);
       }
 
     } catch (error) {
-      console.error("❌ Fetch Error:", error.message);
+      console.error(" Fetch Error:", error.message);
     }
 
     // ── Response ──

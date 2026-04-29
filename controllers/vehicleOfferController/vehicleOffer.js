@@ -29,170 +29,14 @@ const getOfferById = async (req, res) => {
   }
 };
 
-// POST - Create offer & apply discount if vehicle model matches active offer
-// const createOffer = async (req, res) => {
-//   try {
-//     const { model, fromdate, todate, percentage } = req.body;
-
-//     // ✅ Check: same model-க்கு already active offer இருக்கா?
-//     const today = new Date();
-//     const existingActiveOffer = await VehicleOffer.findOne({
-//       model: model,
-//       fromdate: { $lte: today },
-//       todate: { $gte: today },
-//     });
-
-//     if (existingActiveOffer) {
-//       return res.status(400).json({
-//         success: false,
-//         message: `An active offer already exists for model "${model}"`,
-//         existingOffer: existingActiveOffer,
-//       });
-//     }
-
-//     // ✅ Create new offer
-//     const offer = await VehicleOffer.create({ model, fromdate, todate, percentage });
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'Vehicle offer created successfully',
-//       data: {
-//         _id: offer._id,
-//         model: offer.model,
-//         fromdate: offer.fromdate,
-//         todate: offer.todate,
-//         percentage: offer.percentage,
-//         createdAt: offer.createdAt,
-//         updatedAt: offer.updatedAt,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(400).json({ success: false, message: error.message });
-//   }
-// };
-
-// const createOffer = async (req, res) => {
-//   try {
-//     const { model, fromdate, todate, percentage } = req.body;
-
-//     // ✅ Check: same model name already exists (any record)
-//     const existingModel = await VehicleOffer.findOne({ model });
-
-//     if (existingModel) {
-//       return res.status(400).json({
-//         success: false,
-//         message: `Model "${model}" already exists`,
-//       });
-//     }
-
-//     // ✅ Check: same model-க்கு already active offer இருக்கா?
-//     const today = new Date();
-//     const existingActiveOffer = await VehicleOffer.findOne({
-//       model: model,
-//       fromdate: { $lte: today },
-//       todate: { $gte: today },
-//     });
-
-//     if (existingActiveOffer) {
-//       return res.status(400).json({
-//         success: false,
-//         message: `An active offer already exists for model "${model}"`,
-//         existingOffer: existingActiveOffer,
-//       });
-//     }
-
-//     // ✅ Create new offer
-//     const offer = await VehicleOffer.create({ model, fromdate, todate, percentage });
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'Vehicle offer created successfully',
-//       data: {
-//         _id: offer._id,
-//         model: offer.model,
-//         fromdate: offer.fromdate,
-//         todate: offer.todate,
-//         percentage: offer.percentage,
-//         createdAt: offer.createdAt,
-//         updatedAt: offer.updatedAt,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(400).json({ success: false, message: error.message });
-//   }
-// };
-
-// this code correct case sensitive changes 
-
-// const createOffer = async (req, res) => {
-//   try {
-//     const { model, fromdate, todate, percentage } = req.body;
-
-//     // ✅ Check: model name exists in VehicleModel collection
-//     const vehicleModelExists = await VehicleModel.findOne({ modelName: model });
-
-//     if (!vehicleModelExists) {
-//       return res.status(404).json({
-//         success: false,
-//         message: `Model name "${model}" not found in vehicle models`,
-//       });
-//     }
-
-//     // ✅ Check: same model name already exists in VehicleOffer
-//     const existingModel = await VehicleOffer.findOne({ model });
-
-//     if (existingModel) {
-//       return res.status(400).json({
-//         success: false,
-//         message: `Model "${model}" already exists`,
-//       });
-//     }
-
-//     // ✅ Check: same model already has an active offer
-//     const today = new Date();
-//     const existingActiveOffer = await VehicleOffer.findOne({
-//       model: model,
-//       fromdate: { $lte: today },
-//       todate: { $gte: today },
-//     });
-
-//     if (existingActiveOffer) {
-//       return res.status(400).json({
-//         success: false,
-//         message: `An active offer already exists for model "${model}"`,
-//         existingOffer: existingActiveOffer,
-//       });
-//     }
-
-//     // ✅ Create new offer
-//     const offer = await VehicleOffer.create({ model, fromdate, todate, percentage });
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'Vehicle offer created successfully',
-//       data: {
-//         _id: offer._id,
-//         model: offer.model,
-//         fromdate: offer.fromdate,
-//         todate: offer.todate,
-//         percentage: offer.percentage,
-//         createdAt: offer.createdAt,
-//         updatedAt: offer.updatedAt,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(400).json({ success: false, message: error.message });
-//   }
-// };
-
 const createOffer = async (req, res) => {
   try {
     const { model, fromdate, todate, percentage } = req.body;
 
-    // ── Normalize input ───
+
     const normalizedModel = model.trim().toLowerCase();
 
-    // ── Check: model name exists in VehicleModel collection ───
+  
     const vehicleModelExists = await VehicleModel.findOne({
       $expr: { $eq: [{ $toLower: "$modelName" }, normalizedModel] },
     });
@@ -204,7 +48,7 @@ const createOffer = async (req, res) => {
       });
     }
 
-    // ── Check: same model name already exists in VehicleOffer ───
+   
     const existingModel = await VehicleOffer.findOne({
       $expr: { $eq: [{ $toLower: "$model" }, normalizedModel] },
     });
@@ -216,7 +60,7 @@ const createOffer = async (req, res) => {
       });
     }
 
-    // ── Check: same model already has an active offer ───
+   
     const today = new Date();
     const existingActiveOffer = await VehicleOffer.findOne({
       $expr: { $eq: [{ $toLower: "$model" }, normalizedModel] },
@@ -232,7 +76,7 @@ const createOffer = async (req, res) => {
       });
     }
 
-    // ── Create new offer — original casing from DB ───
+    
     const offer = await VehicleOffer.create({
       model: vehicleModelExists.modelName,
       fromdate,

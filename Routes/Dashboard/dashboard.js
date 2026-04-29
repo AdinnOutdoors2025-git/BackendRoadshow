@@ -33,8 +33,7 @@ router.get("/vehicles/availability", getVehicleAvailabilityCount);
 // GET /api/dashboard/enquiries/monthly?year=2026
 router.get("/enquiries/monthly", getMonthlyEnquiryCount);
 
-// ── Combined (Single call for all stats) ───────
-// GET /api/dashboard/stats?year=2026
+
 router.get("/dashboard", getAllDashboardStats);
 
 module.exports = router;

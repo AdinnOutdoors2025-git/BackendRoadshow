@@ -7,7 +7,7 @@ const createVehicle = async (req, res) => {
     const files = req.files || {};
     const { model, city, vehicleNumber } = req.body;
 
-    // Same model + city இருக்கா check பண்ணு
+    // Same model + city 
     const existingVehicle = await vehicleDetails.findOne({ model, city });
 
     if (existingVehicle) {

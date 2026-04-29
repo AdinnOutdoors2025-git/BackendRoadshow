@@ -15,12 +15,9 @@ const generateOTP = () =>
 const generateToken = (userId) =>
   jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP 1 — REGISTER
+
 // POST /register
-// Body: { name, phone, email? }
-// Action: validate → check duplicate → save user (unverified) → send OTP
-// ─────────────────────────────────────────────────────────────────────────────
+
 const register = async (req, res) => {
   try {
     const { name, email, phone } = req.body;
@@ -102,12 +99,9 @@ const register = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP 2 — VERIFY OTP (after register)
+
 // POST /api/user/verify-otp
-// Body: { phone, otp }
-// Action: find OTP record → match → mark user verified → return JWT
-// ─────────────────────────────────────────────────────────────────────────────
+
 const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -170,12 +164,9 @@ const verifyOtp = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LOGIN — Send OTP
+
 // POST /api/user/login
-// Body: { name, phone } OR { name, email }
-// Action: find user → check verified → send OTP
-// ─────────────────────────────────────────────────────────────────────────────
+
 const login = async (req, res) => {
   try {
     const { name, phone, email } = req.body;
@@ -232,11 +223,9 @@ const login = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LOGIN — Verify OTP → Issue JWT
+
 // POST /api/user/login-verify
-// Body: { phone, otp }
-// ─────────────────────────────────────────────────────────────────────────────
+
 const loginVerifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -288,11 +277,9 @@ const loginVerifyOtp = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET PROFILE (protected)
+
 // GET /api/user/getUser
-// Header: Authorization: Bearer <token>
-// ─────────────────────────────────────────────────────────────────────────────
+
 const getUsers = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -317,11 +304,9 @@ const getUsers = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RESEND OTP
+
 // POST /api/user/resend-otp
-// Body: { phone }
-// ─────────────────────────────────────────────────────────────────────────────
+
 const resendOtp = async (req, res) => {
   try {
     const { phone } = req.body;

@@ -23,6 +23,7 @@ const vehicleOfferRoutes = require('./Routes/vehicleOfferRoutes/vehicleOffer');
 const EnquiryRoutes = require("./Routes/EnquiryRoutes/Enquiry");
 const dashboardRoutes = require("./Routes/Dashboard/dashboard");
 const productenquiry = require("./Routes/Productenquiry/productenquiry");
+const ContactEnquiryRoutes = require("./Routes/ContactEnquiryRoute/ContactEnquiryRoute");
 
 
 //Image upload requirements
@@ -131,7 +132,7 @@ app.use(express.static("public"));
 mongoose
   .connect(
     // "mongodb+srv://roadshowAdinn:doAztsUGMfooi5PY@roadshowadinn.sephmyg.mongodb.net/?appName=RoadshowAdinn",
-    "mongodb://localhost:27017/Roadshow",
+   "mongodb://localhost:27017/Roadshow",
 
   )
 
@@ -149,8 +150,6 @@ mongoose
 
 
 
-// app.use("/adminUserLogin", require("./UserAdminLogin"));
-// app.use("/EmployeeLogin", require("./LoginMain"));
 
 // ─── Routes ──────────────────────────────────
 app.use(newVehicleRoutes);
@@ -170,6 +169,7 @@ app.use('/vehicleoffers', vehicleOfferRoutes);
 app.use(EnquiryRoutes);
 app.use(dashboardRoutes);
 app.use('/productenquiry', productenquiry);
+app.use(ContactEnquiryRoutes);
 
 
 // VEHICLE DETAILS STORED WITH CRUD OPERATIONS

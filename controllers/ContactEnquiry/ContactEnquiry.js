@@ -1,54 +1,35 @@
-require('dotenv').config();
+require("dotenv").config();
 const axios = require("axios");
-const Enquiry = require("../../Models/Enquiry/enquirymodel");
+const Enquiry = require("../../Models/contactEnquiryModel/contactEnquiryModel");
 
-const sendRoadshowEnquiry = async (req, res) => {
+const sendContactEnquiry = async (req, res) => {
   try {
     const {
       userName,
-      userEnquiryEmail,
       userContactNumber,
-      userPreferredLocation,
-      userStartDate,
-      userEndDate,
-      userPreferredvehicle,
+      userEnquiryEmail,
       userEnquiryMessage,
     } = req.body;
 
-    // Basic Validation
-    if (
-    
-      !userName ||
-      !userEnquiryEmail ||
-      !userContactNumber ||
-      !userPreferredLocation ||
-      !userStartDate ||
-      !userEndDate ||
-      !userPreferredvehicle
-    ) {
+    // Mandatory fields check
+    if (!userName || !userContactNumber) {
       return res.status(400).json({
         status: "error",
-        message: "All required fields must be provided",
+        message: "Name and phone number are required",
       });
     }
 
     const payload = {
-      mailtype: "roadshowEnquiry",
+      mailtype: "contactEnquiry",
       userName,
-      userEnquiryEmail,
       userContactNumber,
-      userPreferredLocation,
-      userStartDate,
-      userEndDate,
-      userPreferredvehicle,
+      userEnquiryEmail: userEnquiryEmail || "",
       userEnquiryMessage: userEnquiryMessage || "",
     };
 
-    
+   
     const apiResponse = await axios.post(
-
-         process.env.EXTERNAL_API_URL,
-     
+      process.env.EXTERNAL_API_URL,
       payload,
       {
         headers: {
@@ -59,9 +40,8 @@ const sendRoadshowEnquiry = async (req, res) => {
 
     const { status, message } = apiResponse.data;
 
-    // Step 2: API success-ஆ check பண்ணு
+
     if (status === "success") {
-    
       const newEnquiry = new Enquiry({
         ...payload,
         apiStatus: status,
@@ -71,20 +51,18 @@ const sendRoadshowEnquiry = async (req, res) => {
 
       return res.status(200).json({
         status: "success",
-        message: "Mail sent and enquiry saved successfully",
+        message: "Mail sent and Contact enquiry saved successfully",
         data: newEnquiry,
       });
     } else {
-      
       return res.status(400).json({
         status: "error",
         message: message || "External API failed",
       });
     }
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error(" Error:", error.message);
 
-    // Axios error handle
     if (error.response) {
       return res.status(error.response.status).json({
         status: "error",
@@ -99,4 +77,4 @@ const sendRoadshowEnquiry = async (req, res) => {
   }
 };
 
-module.exports = { sendRoadshowEnquiry };
+module.exports = { sendContactEnquiry };

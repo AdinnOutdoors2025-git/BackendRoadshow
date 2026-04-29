@@ -1,469 +1,4 @@
 
-// const User = require("../../Models/User/user");
-// const Order = require("../../Models/orderModel");
-// const Vehicle = require("../../Models/vehicleDetails");
-// const Enquiry = require("../../Models/Enquiry/enquirymodel");
-// const ProductEnquiry = require("../../Models/Productenquiry/enquiry"); 
-
-// // ─────────────────────────────────────────────
-// // HELPER: 12 month labels generate பண்ண
-// // ─────────────────────────────────────────────
-// const getMonthlyTemplate = () => {
-//   const months = [];
-//   for (let m = 1; m <= 12; m++) {
-//     months.push({ month: m, count: 0 });
-//   }
-//   return months;
-// };
-
-// // ─────────────────────────────────────────────
-// // HELPER: Single year க்கு monthly data மட்டும்
-// // ─────────────────────────────────────────────
-// const fetchMonthlyForYear = async (year) => {
-//   const statusList = [
-//     "newOrder",
-//     "proposal",
-//     "negotiation",
-//     "closedWon",
-//     "closedLoss",
-//   ];
-
-//   const yearStart = new Date(`${year}-01-01`);
-//   const yearEnd = new Date(`${year}-12-31T23:59:59`);
-
-//   const [monthlyOrdersAgg, enquiryAgg, productEnquiryAgg] = await Promise.all([ 
-//     Order.aggregate([
-//       { $match: { updatedAt: { $gte: yearStart, $lte: yearEnd } } },
-//       {
-//         $group: {
-//           _id: {
-//             month: { $month: "$updatedAt" },
-//             status: "$pipelineStatus",
-//           },
-//           count: { $sum: 1 },
-//         },
-//       },
-//     ]),
-//     Enquiry.aggregate([
-//       { $match: { createdAt: { $gte: yearStart, $lte: yearEnd } } },
-//       {
-//         $group: {
-//           _id: { month: { $month: "$createdAt" } },
-//           count: { $sum: 1 },
-//         },
-//       },
-//       { $sort: { "_id.month": 1 } },
-//     ]),
-//     // ✅ ProductEnquiry monthly aggregation - same createdAt logic
-//     ProductEnquiry.aggregate([
-//       { $match: { createdAt: { $gte: yearStart, $lte: yearEnd } } },
-//       {
-//         $group: {
-//           _id: { month: { $month: "$createdAt" } },
-//           count: { $sum: 1 },
-//         },
-//       },
-//       { $sort: { "_id.month": 1 } },
-//     ]),
-//   ]);
-
-//   // Monthly orders
-//   const monthlyOrders = {};
-//   statusList.forEach((status) => {
-//     monthlyOrders[status] = getMonthlyTemplate();
-//   });
-//   monthlyOrdersAgg.forEach((r) => {
-//     const { month, status } = r._id;
-//     if (monthlyOrders[status]) {
-//       monthlyOrders[status][month - 1].count = r.count;
-//     }
-//   });
-
-//   // Monthly enquiry
-//   const monthlyEnquiry = getMonthlyTemplate();
-//   enquiryAgg.forEach((r) => {
-//     monthlyEnquiry[r._id.month - 1].count = r.count;
-//   });
-
-//   // ✅ Monthly product enquiry
-//   const monthlyProductEnquiry = getMonthlyTemplate();
-//   productEnquiryAgg.forEach((r) => {
-//     monthlyProductEnquiry[r._id.month - 1].count = r.count;
-//   });
-
-//   return {
-//     monthlyOrders,
-//     monthlyEnquiry,
-//     monthlyProductEnquiry, // ✅ Return பண்றோம்
-//   };
-// };
-
-// // ─────────────────────────────────────────────
-// // 1. USERS - isVerified: true count
-// // ─────────────────────────────────────────────
-// const getVerifiedUsersCount = async (req, res) => {
-//   try {
-//     const verifiedCount = await User.countDocuments({ isVerified: true });
-//     const totalCount = await User.countDocuments();
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         totalUsers: totalCount,
-//         verifiedUsers: verifiedCount,
-//         unverifiedUsers: totalCount - verifiedCount,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-// // ─────────────────────────────────────────────
-// // 2A. ORDERS - pipelineStatus count
-// // ─────────────────────────────────────────────
-// const getPipelineStatusCounts = async (req, res) => {
-//   try {
-//     const statusList = [
-//       "newOrder",
-//       "proposal",
-//       "negotiation",
-//       "closedWon",
-//       "closedLoss",
-//     ];
-
-//     const result = await Order.aggregate([
-//       { $group: { _id: "$pipelineStatus", count: { $sum: 1 } } },
-//     ]);
-
-//     const statusMap = {};
-//     statusList.forEach((s) => (statusMap[s] = 0));
-//     result.forEach((r) => {
-//       if (r._id) statusMap[r._id] = r.count;
-//     });
-
-//     res.status(200).json({ success: true, data: statusMap });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-// // ─────────────────────────────────────────────
-// // 2B. ORDERS - closedWon grandTotal sum
-// // ─────────────────────────────────────────────
-// const getClosedWonAmount = async (req, res) => {
-//   try {
-//     const result = await Order.aggregate([
-//       { $match: { pipelineStatus: "closedWon" } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalAmount: { $sum: "$grandTotal" },
-//           orderCount: { $sum: 1 },
-//         },
-//       },
-//     ]);
-
-//     const data = result[0] || { totalAmount: 0, orderCount: 0 };
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         closedWonAmount: data.totalAmount,
-//         closedWonOrders: data.orderCount,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-// // ─────────────────────────────────────────────
-// // 2C. ORDERS - Monthly count by pipelineStatus
-// // ─────────────────────────────────────────────
-// const getMonthlyOrdersByPipelineStatus = async (req, res) => {
-//   try {
-//     const year = parseInt(req.query.year) || new Date().getFullYear();
-//     const statusList = [
-//       "newOrder",
-//       "proposal",
-//       "negotiation",
-//       "closedWon",
-//       "closedLoss",
-//     ];
-
-//     const result = await Order.aggregate([
-//       {
-//         $match: {
-//           updatedAt: {
-//             $gte: new Date(`${year}-01-01`),
-//             $lte: new Date(`${year}-12-31T23:59:59`),
-//           },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: {
-//             month: { $month: "$updatedAt" },
-//             status: "$pipelineStatus",
-//           },
-//           count: { $sum: 1 },
-//         },
-//       },
-//     ]);
-
-//     const formatted = {};
-//     statusList.forEach((status) => {
-//       formatted[status] = getMonthlyTemplate();
-//     });
-//     result.forEach((r) => {
-//       const { month, status } = r._id;
-//       if (formatted[status]) {
-//         formatted[status][month - 1].count = r.count;
-//       }
-//     });
-
-//     res.status(200).json({ success: true, year, data: formatted });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-
-// // ─────────────────────────────────────────────
-// // 3. VEHICLES - availability count
-// // ─────────────────────────────────────────────
-// const getVehicleAvailabilityCount = async (req, res) => {
-//   try {
-//     const result = await Vehicle.aggregate([
-//       { $group: { _id: "$availability", count: { $sum: "$vehicleCount" } } },
-//     ]);
-
-//     // ✅ Available + Booked => availableCount
-//     // ✅ Under Maintenance + Disabled => unavailableCount
-//     const availableStatuses = ["Available"];
-//     const unavailableStatuses = ["Booked","Under Maintenance", "Disabled"];
-
-//     let availableCount = 0;
-//     let unavailableCount = 0;
-
-//     result.forEach((r) => {
-//       if (availableStatuses.includes(r._id)) {
-//         availableCount += r.count;
-//       } else if (unavailableStatuses.includes(r._id)) {
-//         unavailableCount += r.count;
-//       }
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         availableCount,
-//         unavailableCount,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-// // ─────────────────────────────────────────────
-// // 4. ENQUIRY - Monthly count (createdAt basis)
-// // ─────────────────────────────────────────────
-// const getMonthlyEnquiryCount = async (req, res) => {
-//   try {
-//     const year = parseInt(req.query.year) || new Date().getFullYear();
-
-//     const result = await Enquiry.aggregate([
-//       {
-//         $match: {
-//           createdAt: {
-//             $gte: new Date(`${year}-01-01`),
-//             $lte: new Date(`${year}-12-31T23:59:59`),
-//           },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: { month: { $month: "$createdAt" } },
-//           count: { $sum: 1 },
-//         },
-//       },
-//       { $sort: { "_id.month": 1 } },
-//     ]);
-
-//     const monthly = getMonthlyTemplate();
-//     result.forEach((r) => {
-//       monthly[r._id.month - 1].count = r.count;
-//     });
-
-//     res.status(200).json({ success: true, year, data: monthly });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-// // ─────────────────────────────────────────────
-// // 5. PRODUCT ENQUIRY - Monthly count (createdAt basis) ✅ New controller
-// // ─────────────────────────────────────────────
-// const getMonthlyProductEnquiryCount = async (req, res) => {
-//   try {
-//     const year = parseInt(req.query.year) || new Date().getFullYear();
-
-//     const result = await ProductEnquiry.aggregate([
-//       {
-//         $match: {
-//           createdAt: {
-//             $gte: new Date(`${year}-01-01`),
-//             $lte: new Date(`${year}-12-31T23:59:59`),
-//           },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: { month: { $month: "$createdAt" } },
-//           count: { $sum: 1 },
-//         },
-//       },
-//       { $sort: { "_id.month": 1 } },
-//     ]);
-
-//     const monthly = getMonthlyTemplate();
-//     result.forEach((r) => {
-//       monthly[r._id.month - 1].count = r.count;
-//     });
-
-//     res.status(200).json({ success: true, year, data: monthly });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-
-
-// const getAllDashboardStats = async (req, res) => {
-//   try {
-//     const currentYear = new Date().getFullYear();
-//     const statusList = [
-//       "newOrder",
-//       "proposal",
-//       "negotiation",
-//       "closedWon",
-//       "closedLoss",
-//     ];
-
-//     const years = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i);
-
-//     const [
-//       verifiedCount,
-//       totalUsers,
-//       vehicleAgg,
-//       pipelineAgg,
-//       pipelineAmountAgg,   // ✅ renamed - all statuses amount
-//       totalOrderCount,
-//       ...yearResults
-//     ] = await Promise.all([
-//       User.countDocuments({ isVerified: true }),
-//       User.countDocuments(),
-//       Vehicle.aggregate([
-//         { $group: { _id: "$availability", count: { $sum: "$vehicleCount" } } },
-//       ]),
-//       Order.aggregate([
-//         { $group: { _id: "$pipelineStatus", count: { $sum: 1 } } },
-//       ]),
-//       // ✅ All pipeline statuses க்கும் totalAmount + orderCount
-//       Order.aggregate([
-//         {
-//           $group: {
-//             _id: "$pipelineStatus",
-//             totalAmount: { $sum: "$grandTotal" },
-//             orderCount: { $sum: 1 },
-//           },
-//         },
-//       ]),
-//       Order.countDocuments(),
-//       ...years.map((year) => fetchMonthlyForYear(year)),
-//     ]);
-
-//     // Vehicle availability
-//     const availableStatuses = ["Available"];
-//     const unavailableStatuses = ["Booked","Under Maintenance", "Disabled"];
-//     let availableCount = 0;
-//     let unavailableCount = 0;
-//     vehicleAgg.forEach((r) => {
-//       if (availableStatuses.includes(r._id)) availableCount += r.count;
-//       else if (unavailableStatuses.includes(r._id)) unavailableCount += r.count;
-//     });
-
-//     // Pipeline status counts map
-//     const pipelineStatusCounts = {};
-//     statusList.forEach((s) => (pipelineStatusCounts[s] = 0));
-//     pipelineAgg.forEach((r) => {
-//       if (r._id) pipelineStatusCounts[r._id] = r.count;
-//     });
-
-//     // ✅ Pipeline amount map - all statuses
-//     const pipelineStatusAmounts = {};
-//     statusList.forEach((s) => {
-//       pipelineStatusAmounts[s] = { totalAmount: 0, orderCount: 0 };
-//     });
-//     pipelineAmountAgg.forEach((r) => {
-//       if (r._id && pipelineStatusAmounts[r._id]) {
-//         pipelineStatusAmounts[r._id] = {
-//           totalAmount: r.totalAmount,
-//           orderCount: r.orderCount,
-//         };
-//       }
-//     });
-
-//     // Build yearly
-//     const yearly = {};
-//     years.forEach((year, idx) => {
-//       yearly[year] = yearResults[idx];
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       years,
-//       currentYear,
-//       data: {
-//         users: {
-//           totalUsers,
-//           verifiedUsers: verifiedCount,
-//           unverifiedUsers: totalUsers - verifiedCount,
-//         },
-//         vehicles: {
-//           availability: {
-//             availableCount,
-//             unavailableCount,
-//           },
-//         },
-//         orders: {
-//           totalCount: totalOrderCount,
-//           pipelineStatusCounts,
-//           pipelineStatusAmounts,
-//         },
-//       },
-//       yearly,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
-
-// module.exports = {
-//   getVerifiedUsersCount,
-//   getPipelineStatusCounts,
-//   getClosedWonAmount,
-//   getMonthlyOrdersByPipelineStatus,
-//   getVehicleAvailabilityCount,
-//   getMonthlyEnquiryCount,
-//   getMonthlyProductEnquiryCount, 
-//   getAllDashboardStats,
-// };
-
-
 const mongoose = require("mongoose");
 const User = require("../../Models/User/user");
 const Order = require("../../Models/orderModel");
@@ -472,7 +7,7 @@ const Enquiry = require("../../Models/Enquiry/enquirymodel");
 const ProductEnquiry = require("../../Models/Productenquiry/enquiry");
 
 // ─────────────────────────────────────────────
-// HELPER: 12 month labels generate பண்ண
+// HELPER: 12 month labels generate 
 // ─────────────────────────────────────────────
 const getMonthlyTemplate = () => {
   const months = [];
@@ -487,9 +22,9 @@ const getMonthlyTemplate = () => {
 // ─────────────────────────────────────────────
 const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
 
-// ─────────────────────────────────────────────
+
 // HELPER: Daily template for a given year+month
-// ─────────────────────────────────────────────
+
 const getDailyTemplate = (year, month) => {
   const days = getDaysInMonth(year, month);
   const result = [];
@@ -499,10 +34,7 @@ const getDailyTemplate = (year, month) => {
   return result;
 };
 
-// ─────────────────────────────────────────────
-// HELPER: Monthly+Daily template builder
-// Returns { 1: { month:1, count:0, days:[...] }, ... }
-// ─────────────────────────────────────────────
+
 const getMonthlyWithDailyTemplate = (year) => {
   const result = {};
   for (let m = 1; m <= 12; m++) {
@@ -515,14 +47,10 @@ const getMonthlyWithDailyTemplate = (year) => {
   return result;
 };
 
-// ─────────────────────────────────────────────
-// HELPER: Convert monthlyWithDaily object → array (for consistent response)
-// ─────────────────────────────────────────────
+
 const monthlyObjToArray = (obj) => Object.values(obj);
 
-// ─────────────────────────────────────────────
-// HELPER: Single year க்கு monthly+daily data
-// ─────────────────────────────────────────────
+
 const fetchMonthlyForYear = async (year) => {
   const statusList = ["newOrder", "proposal", "negotiation", "closedWon", "closedLoss"];
 
@@ -599,7 +127,7 @@ const fetchMonthlyForYear = async (year) => {
       { $sort: { "_id.month": 1, "_id.day": 1 } },
     ]),
 
-    // ── Users: count by month+day (createdAt), verified only ──
+  
     User.aggregate([
       {
         $match: {
@@ -619,7 +147,7 @@ const fetchMonthlyForYear = async (year) => {
       { $sort: { "_id.month": 1, "_id.day": 1 } },
     ]),
 
-    // ── Vehicles: count by month+day (updatedAt), by availability ──
+ 
     Vehicle.aggregate([
       { $match: { updatedAt: { $gte: yearStart, $lte: yearEnd } } },
       {
@@ -636,7 +164,7 @@ const fetchMonthlyForYear = async (year) => {
     ]),
   ]);
 
-  // ── Build: monthly orders (count) ──
+ 
   const monthlyOrders = {};
   statusList.forEach((status) => {
     monthlyOrders[status] = getMonthlyWithDailyTemplate(year);
@@ -763,9 +291,9 @@ const fetchMonthlyForYear = async (year) => {
   };
 };
 
-// ─────────────────────────────────────────────
+
 // 1. USERS - isVerified: true count
-// ─────────────────────────────────────────────
+
 const getVerifiedUsersCount = async (req, res) => {
   try {
     const verifiedCount = await User.countDocuments({ isVerified: true });
@@ -784,9 +312,9 @@ const getVerifiedUsersCount = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
+
 // 2A. ORDERS - pipelineStatus count
-// ─────────────────────────────────────────────
+
 const getPipelineStatusCounts = async (req, res) => {
   try {
     const statusList = ["newOrder", "proposal", "negotiation", "closedWon", "closedLoss"];
@@ -807,9 +335,9 @@ const getPipelineStatusCounts = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
+
 // 2B. ORDERS - closedWon grandTotal sum
-// ─────────────────────────────────────────────
+
 const getClosedWonAmount = async (req, res) => {
   try {
     const result = await Order.aggregate([
@@ -837,9 +365,9 @@ const getClosedWonAmount = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
+
 // 2C. ORDERS - Monthly count by pipelineStatus
-// ─────────────────────────────────────────────
+
 const getMonthlyOrdersByPipelineStatus = async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
@@ -882,9 +410,9 @@ const getMonthlyOrdersByPipelineStatus = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
+
 // 3. VEHICLES - availability count
-// ─────────────────────────────────────────────
+
 const getVehicleAvailabilityCount = async (req, res) => {
   try {
     const result = await Vehicle.aggregate([
@@ -908,9 +436,9 @@ const getVehicleAvailabilityCount = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
+
 // 4. ENQUIRY - Monthly count
-// ─────────────────────────────────────────────
+
 const getMonthlyEnquiryCount = async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
@@ -944,9 +472,8 @@ const getMonthlyEnquiryCount = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// 5. PRODUCT ENQUIRY - Monthly count
-// ─────────────────────────────────────────────
+
+
 const getMonthlyProductEnquiryCount = async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
@@ -980,9 +507,9 @@ const getMonthlyProductEnquiryCount = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
+
 // MAIN: All Dashboard Stats
-// ─────────────────────────────────────────────
+
 const getAllDashboardStats = async (req, res) => {
   try {
     const currentYear = new Date().getFullYear();
@@ -1076,29 +603,7 @@ const getAllDashboardStats = async (req, res) => {
         },
       },
       yearly,
-      /*
-        yearly[year] shape:
-        {
-          monthlyOrders: {
-            newOrder: [ { month, count, days: [{ date, count }] }, ... x12 ],
-            proposal: [...],
-            negotiation: [...],
-            closedWon: [...],
-            closedLoss: [...]
-          },
-          monthlyOrderAmounts: {
-            newOrder: [ { month, totalAmount, orderCount, days: [{ date, totalAmount, orderCount }] }, ... x12 ],
-            ...
-          },
-          monthlyEnquiry:        [ { month, count, days: [{ date, count }] }, ... x12 ],
-          monthlyProductEnquiry: [ { month, count, days: [{ date, count }] }, ... x12 ],
-          monthlyUsers:          [ { month, count, days: [{ date, count }] }, ... x12 ],
-          monthlyVehicles: {
-            available:   [ { month, count, days: [{ date, count }] }, ... x12 ],
-            unavailable: [ { month, count, days: [{ date, count }] }, ... x12 ],
-          }
-        }
-      */
+    
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

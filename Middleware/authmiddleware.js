@@ -29,7 +29,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    req.user = user;  // attach user to request
+    req.user = user;  
     next();
 
   } catch (error) {

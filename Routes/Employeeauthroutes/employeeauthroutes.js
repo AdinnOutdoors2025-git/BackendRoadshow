@@ -16,9 +16,9 @@ router.post('/employee/login',    loginEmployee);
 
 // ── Protected routes ──────────────────────────────────────────────────────────
 router.get('/me',
-    protect,           // 1. Verify JWT
-    isEmployee,            // 2. Role must be 'employee' or 'admin'
-    verifyEmployeeExists,  // 3. Employee must exist in DB
+    protect,           
+    isEmployee,            
+    verifyEmployeeExists,  
     getEmployeeProfile
 );
 

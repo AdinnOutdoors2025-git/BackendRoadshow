@@ -12,9 +12,7 @@ const sendOTP = async (mobileNumber, otp) => {
     `Welcome to Adinn Outdoors! Your verification code is ${otp}. ` +
     `Use this OTP to complete your verification. Please don't share it with anyone.`;
 
-//  const NETTYFISH_API_KEY="aspv58uRbkqDbhCcCN87Mw";
-// const NETTYFISH_SENDER_ID="ADINAD" ;
-// const NETTYFISH_TEMPLATE_ID="1007403395830327066";
+
 
   const apiUrl =
     `https://retailsms.nettyfish.com/api/mt/SendSMS?` +
