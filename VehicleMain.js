@@ -24,6 +24,7 @@ const EnquiryRoutes = require("./Routes/EnquiryRoutes/Enquiry");
 const dashboardRoutes = require("./Routes/Dashboard/dashboard");
 const productenquiry = require("./Routes/Productenquiry/productenquiry");
 const ContactEnquiryRoutes = require("./Routes/ContactEnquiryRoute/ContactEnquiryRoute");
+const packageRoutes = require('./Routes/packageRoutes/packageroutes');
 
 
 //Image upload requirements
@@ -170,6 +171,7 @@ app.use(EnquiryRoutes);
 app.use(dashboardRoutes);
 app.use('/productenquiry', productenquiry);
 app.use(ContactEnquiryRoutes);
+app.use('/packages', packageRoutes);
 
 
 // VEHICLE DETAILS STORED WITH CRUD OPERATIONS
